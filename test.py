@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Embedding
 key = 'RM2J9YHI19A162UW'
-# %%
+
 #fetch_df = pdr.get_data_alphavantage('SBI',key)
 from alpha_vantage.timeseries import TimeSeries
 # %%
 ts = TimeSeries(key=key, output_format='pandas')
-ts.get
-data, metadata = ts.get_intraday(symbol='SBIN', interval='1min', outputsize='full')
+# ts.get
+data, metadata = ts.get_intraday(symbol='BSE:SBIN', interval='1min', outputsize='full')
 # %%
 #using nsetools for top gainers,losers,most active
 from nsetools import Nse
