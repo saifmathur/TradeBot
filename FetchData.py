@@ -8,7 +8,7 @@ import pandas_datareader as pdr
 
 from key import KEY
 KEY = KEY
-SYMBOL = 'BSE:SBIN'
+SYMBOL = 'INFY'
 BASE_API_URL = 'https://www.alphavantage.co/query?'
 FUNCTION = 'TIME_SERIES_WEEKLY'
 INTERVAL = '1min'
@@ -17,9 +17,9 @@ SLICE = 'year1month1'
 def fetchIntraday(symbol,interval,key):
     url = BASE_API_URL + 'function=TIME_SERIES_INTRADAY'+'&symbol='+symbol+'&interval='+interval+'&apikey='+key
     response_json = requests.get(url).json()
-    # print(response_json)
-    # print(response_json.keys())
-    dataframe = pd.DataFrame.from_dict(response_json['Time Series (1min)'], orient='index').sort_index(axis=1)
+    #print(response_json)
+    print(response_json.keys())
+    dataframe = pd.DataFrame.from_dict(response_json['Time Series ('+interval+')'], orient='index').sort_index(axis=1)
     dataframe = dataframe.rename(columns={
         '1. open':'Open',
         '2. high':'High',
@@ -30,6 +30,7 @@ def fetchIntraday(symbol,interval,key):
     dataframe = dataframe[['Open','High','Low','Close','Volume']]
     return dataframe
 
+df = fetchIntraday(SYMBOL,INTERVAL,KEY)
 
 def fetchWeekly(symbol,interval,key):
     url = BASE_API_URL + 'function=TIME_SERIES_WEEKLY'+'&symbol='+symbol+'&apikey='+key
