@@ -5,9 +5,9 @@ import requests
 import pandas as pd
 import pandas_datareader as pdr
 
-#requests.get('https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY&symbol=BSE:SBIN&interval=15min&slice=year1month1&apikey=RM2J9YHI19A162UW').json()
 
-KEY = 'RM2J9YHI19A162UW'
+from key import KEY
+KEY = KEY
 SYMBOL = 'BSE:SBIN'
 BASE_API_URL = 'https://www.alphavantage.co/query?'
 FUNCTION = 'TIME_SERIES_WEEKLY'
@@ -30,7 +30,6 @@ def fetchIntraday(symbol,interval,key):
     dataframe = dataframe[['Open','High','Low','Close','Volume']]
     return dataframe
 
-# df = fetchIntraday(SYMBOL,INTERVAL,KEY)
 
 def fetchWeekly(symbol,interval,key):
     url = BASE_API_URL + 'function=TIME_SERIES_WEEKLY'+'&symbol='+symbol+'&apikey='+key
@@ -46,7 +45,6 @@ def fetchWeekly(symbol,interval,key):
     })
     dataframe = dataframe[['Open','High','Low','Close','Volume']]
     return dataframe
-
 
 def fetchIntradayExtended(symbol,interval,Slice,key):
     url = BASE_API_URL + 'function=TIME_SERIES_INTRADAY_EXTENDED'+'&symbol='+symbol+'&interval='+interval+'&slice='+Slice+'&apikey='+key
@@ -135,3 +133,5 @@ def getFundamentalData(function,symbol):
 
 
 #overView = getFundamentalData(FUNCTION,SYMBOL)
+
+# %%
