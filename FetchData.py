@@ -104,3 +104,34 @@ def getQuoteEndpoint(symbol):
 
 ########################## DATA FETCHING ####################################
 
+########################## FUNDAMENTAL DATA #################################
+import requests
+import pandas as pd
+from nsetools import Nse
+nse = Nse()
+KEY = 'RM2J9YHI19A162UW'
+SYMBOL = 'INFY'
+BASE_API_URL = 'https://www.alphavantage.co/query?'
+FUNCTION = 'INCOME_STATEMENT'
+
+'''
+functions for this file
+
+OVERVIEW
+INCOME_STATEMENT
+BALANCE_SHEET
+CASH_FLOW
+LISTING_STATUS
+
+'''
+
+def getFundamentalData(function,symbol): 
+    url = BASE_API_URL + 'function='+function+'&symbol='+symbol+'&apikey='+KEY
+    response_json = requests.get(url).json()
+    if not response_json:
+        print("No result found, this function won't work with NSE/BSE data")
+    else:
+        return response_json
+
+
+#overView = getFundamentalData(FUNCTION,SYMBOL)

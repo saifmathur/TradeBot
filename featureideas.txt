@@ -1,3 +1,5 @@
 1.get company overview
 2.find a finance news API
-
+3.set a 'search endpoint' functionality 
+    on the search bar
+    
