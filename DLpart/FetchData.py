@@ -1,5 +1,3 @@
-# %%
-
 ########################## DATA FETCHING ####################################
 import requests
 import pandas as pd
@@ -30,9 +28,8 @@ def fetchIntraday(symbol,interval,key):
     dataframe = dataframe[['Open','High','Low','Close','Volume']]
     return dataframe
 
-df = fetchIntraday(SYMBOL,INTERVAL,KEY)
 
-def fetchWeekly(symbol,interval,key):
+def fetchWeekly(symbol,key):
     url = BASE_API_URL + 'function=TIME_SERIES_WEEKLY'+'&symbol='+symbol+'&apikey='+key
     response_json = requests.get(url).json()
     print(response_json.keys())
@@ -135,4 +132,3 @@ def getFundamentalData(function,symbol):
 
 #overView = getFundamentalData(FUNCTION,SYMBOL)
 
-# %%
