@@ -12,6 +12,7 @@ from alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.timeseries import TimeSeries
 from key import KEY
 from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()
 from nsetools.nse import Nse
 import numpy as np
 
@@ -37,7 +38,6 @@ def dailyOnClose(symbol):
         print('/n')
         print('PREPROCESSING...')
         close_price = dataframe.reset_index()['Close']
-        scaler = MinMaxScaler()
         close_price = scaler.fit_transform(np.array(close_price).reshape(-1,1))
         train_size = int(len(close_price)*0.70)
         test_size = int(len(close_price*0.30))
@@ -46,10 +46,7 @@ def dailyOnClose(symbol):
         return train_data,test_data
     except ValueError:
         print('Try a different scrip')
-# %%
 
-train_data, test_data = dailyOnClose('BSE:SBIN')
-# %%
 def create_dataset(dataset, timestep=1):
     dataX, dataY = [], []
     for i in range(len(dataset) - timestep-1):
@@ -57,22 +54,37 @@ def create_dataset(dataset, timestep=1):
         dataX.append(record)
         dataY.append(dataset[i + timestep, 0])
     return np.array(dataX), np.array(dataY)
-# %%
+
+
+
+train_data, test_data = dailyOnClose('AAPL')
 xtrain, ytrain = create_dataset(train_data,timestep=100)
 xtest, ytest = create_dataset(test_data, timestep=100)
-# %%
+
 xtrain = xtrain.reshape(xtrain.shape[0],xtrain.shape[1], 1)
 xtest = xtest.reshape(xtest.shape[0],xtest.shape[1], 1)
-# %%
+
 model = Sequential()
-model.add(LSTM(50, return_sequences=True, input_shape=(xtrain.shape[1],xtrain.shape[2])))
-model.add(LSTM(50, return_sequences=True))
-model.add(LSTM(50))
+model.add(LSTM(100,return_sequences=True, input_shape=(xtrain.shape[1],xtrain.shape[2])))
+model.add(LSTM(100,return_sequences=True))
+model.add(Dropout(0.4))
+model.add(LSTM(100))
 model.add(Dense(1))
 model.compile(loss='mse', optimizer='adam')
 model.summary()
+model.fit(xtrain,ytrain,batch_size=64,epochs=20,validation_data=(xtest,ytest),verbose=1)
+
 
 # %%
-model.fit(xtrain,ytrain,batch_size=64,epochs=20,validation_data=(xtest,ytest),verbose=0)
+train_pred = model.predict(xtrain)
+test_pred = model.predict(xtest)
+train_pred = scaler.inverse_transform(train_pred)
+test_pred = scaler.inverse_transform(test_pred)
+# %%
+import math
+from sklearn.metrics import mean_squared_error
+math.sqrt(mean_squared_error(ytest,test_pred))
 
 # %%
+look_back = 100
+trainPredictPlot = np.empty_like(close_price)
