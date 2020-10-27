@@ -57,7 +57,7 @@ def create_dataset(dataset, timestep=1):
 
 
 
-train_data, test_data = dailyOnClose('AAPL')
+train_data, test_data = dailyOnClose('BSE:JSWSTEEL')
 xtrain, ytrain = create_dataset(train_data,timestep=100)
 xtest, ytest = create_dataset(test_data, timestep=100)
 
@@ -86,5 +86,9 @@ from sklearn.metrics import mean_squared_error
 math.sqrt(mean_squared_error(ytest,test_pred))
 
 # %%
-look_back = 100
-trainPredictPlot = np.empty_like(close_price)
+# look_back = 100
+# trainPredictPlot = np.empty_like(close_price)
+# %%
+plt.plot(train_pred)
+plt.show()
+# %%
