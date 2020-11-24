@@ -80,3 +80,11 @@ data = pd.read_csv(json_var)
 
 
 # %%
+import yfinance as yf
+nsei = yf.Ticker("BAJAJFINSV.NS")
+nsei.info
+# %%
+hist = nsei.history(period="max")
+# %%
+nsei.dividends
+# %%

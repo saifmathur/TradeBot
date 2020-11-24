@@ -56,23 +56,26 @@ def create_dataset(dataset, timestep=1):
     return np.array(dataX), np.array(dataY)
 
 
+try:
+    train_data, test_data = dailyOnClose('')
+    xtrain, ytrain = create_dataset(train_data,timestep=100)
+    xtest, ytest = create_dataset(test_data, timestep=100)
+    xtrain = xtrain.reshape(xtrain.shape[0],xtrain.shape[1], 1)
+    xtest = xtest.reshape(xtest.shape[0],xtest.shape[1], 1)
+    model = Sequential()
+    model.add(LSTM(100,return_sequences=True, input_shape=(xtrain.shape[1],xtrain.shape[2])))
+    model.add(LSTM(100,return_sequences=True))
+    model.add(Dropout(0.4))
+    model.add(LSTM(100))
+    model.add(Dense(1))
+    model.compile(loss='mse', optimizer='adam')
+    model.summary()
+    model.fit(xtrain,ytrain,batch_size=64,epochs=20,validation_data=(xtest,ytest),verbose=1)
 
-train_data, test_data = dailyOnClose('BSE:JSWSTEEL')
-xtrain, ytrain = create_dataset(train_data,timestep=100)
-xtest, ytest = create_dataset(test_data, timestep=100)
+except TypeError:
+    print('Check scrip name')
+    
 
-xtrain = xtrain.reshape(xtrain.shape[0],xtrain.shape[1], 1)
-xtest = xtest.reshape(xtest.shape[0],xtest.shape[1], 1)
-
-model = Sequential()
-model.add(LSTM(100,return_sequences=True, input_shape=(xtrain.shape[1],xtrain.shape[2])))
-model.add(LSTM(100,return_sequences=True))
-model.add(Dropout(0.4))
-model.add(LSTM(100))
-model.add(Dense(1))
-model.compile(loss='mse', optimizer='adam')
-model.summary()
-model.fit(xtrain,ytrain,batch_size=64,epochs=20,validation_data=(xtest,ytest),verbose=1)
 
 
 # %%
@@ -89,6 +92,6 @@ math.sqrt(mean_squared_error(ytest,test_pred))
 # look_back = 100
 # trainPredictPlot = np.empty_like(close_price)
 # %%
-plt.plot(train_pred)
+plt.plot(test_pred)
 plt.show()
 # %%

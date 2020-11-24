@@ -1,4 +1,5 @@
 ########################## DATA FETCHING ####################################
+# %%
 import requests
 import pandas as pd
 import pandas_datareader as pdr
@@ -6,12 +7,12 @@ import pandas_datareader as pdr
 
 from key import KEY
 KEY = KEY
-SYMBOL = 'INFY'
+SYMBOL = ''
 BASE_API_URL = 'https://www.alphavantage.co/query?'
 FUNCTION = 'TIME_SERIES_WEEKLY'
 INTERVAL = '1min'
 SLICE = 'year1month1'
-
+# %%
 def fetchIntraday(symbol,interval,key):
     url = BASE_API_URL + 'function=TIME_SERIES_INTRADAY'+'&symbol='+symbol+'&interval='+interval+'&apikey='+key
     response_json = requests.get(url).json()
@@ -27,7 +28,8 @@ def fetchIntraday(symbol,interval,key):
     })
     dataframe = dataframe[['Open','High','Low','Close','Volume']]
     return dataframe
-
+df = fetchIntraday('^NSEI',INTERVAL,KEY)
+# %%
 
 def fetchWeekly(symbol,key):
     url = BASE_API_URL + 'function=TIME_SERIES_WEEKLY'+'&symbol='+symbol+'&apikey='+key
@@ -58,23 +60,26 @@ def fetchIntradayExtended(symbol,interval,Slice,key):
     })
     dataframe = dataframe[['Open','High','Low','Close','Volume']]
     return dataframe
-
+# %%
 def fetchDaily(symbol,key):
     url = BASE_API_URL + 'function=TIME_SERIES_DAILY'+'&symbol='+symbol+'&outputsize=full'+'&apikey='+key
     response_json = requests.get(url).json()
     print(response_json.keys())
+    print(response_json)
     print('NOTE: The full-length time series of 20+ years of historical data is being returned')
-    dataframe = pd.DataFrame.from_dict(response_json['Time Series (Daily)'], orient='index').sort_index(axis=1)
-    dataframe = dataframe.rename(columns={
-        '1. open':'Open',
-        '2. high':'High',
-        '3. low':'Low',
-        '4. close':'Close',
-        '5. volume':'Volume'
-    })
-    dataframe = dataframe[['Open','High','Low','Close','Volume']]
-    return dataframe
+    # dataframe = pd.DataFrame.from_dict(response_json['Time Series (Daily)'], orient='index').sort_index(axis=1)
+    # dataframe = dataframe.rename(columns={
+    #     '1. open':'Open',
+    #     '2. high':'High',
+    #     '3. low':'Low',
+    #     '4. close':'Close',
+    #     '5. volume':'Volume'
+    # })
+    # dataframe = dataframe[['Open','High','Low','Close','Volume']]
+    # return dataframe
 
+fetchDaily('^NSEI',KEY)
+# %%
 def fetchDailyAdjusted(symbol,key):
     url = BASE_API_URL + 'function=TIME_SERIES_DAILY_ADJUSTED'+'&symbol='+symbol+'&outputsize=full'+'&apikey='+key
     response_json = requests.get(url).json()
@@ -106,7 +111,7 @@ import pandas as pd
 from nsetools import Nse
 nse = Nse()
 KEY = 'RM2J9YHI19A162UW'
-SYMBOL = 'INFY'
+SYMBOL = ''
 BASE_API_URL = 'https://www.alphavantage.co/query?'
 FUNCTION = 'INCOME_STATEMENT'
 
