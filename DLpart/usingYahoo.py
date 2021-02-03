@@ -69,10 +69,10 @@ def create_dataset(dataset,timestep=1):
 
 # %%
 #creating dataset 
-df,info = fetchFromYahoo('BEPL.NS')
-train_data, test_data = get_train_test_dataset(df)
-xtrain, ytrain = create_dataset(train_data, timestep=100)
-xtest, ytest = create_dataset(test_data, timestep=100)
+df,info = fetchFromYahoo('SPICEJET.NS')
+# train_data, test_data = get_train_test_dataset(df)
+# xtrain, ytrain = create_dataset(train_data, timestep=100)
+# xtest, ytest = create_dataset(test_data, timestep=100)
 # %%
 xtrain = xtrain.reshape(xtrain.shape[0],xtrain.shape[1],1)
 xtest = xtest.reshape(xtest.shape[0],xtest.shape[1],1)
@@ -90,23 +90,39 @@ model.compile(loss='mse', optimizer='adam')
 model.summary()
 
 # %%
-model.fit(xtrain, ytrain, batch_size=64, epochs=20, validation_data=(xtest,ytest))
+model.fit(xtrain, ytrain, batch_size=64, epochs=100, validation_data=(xtest,ytest))
 # %%
 
 train_pred = model.predict(xtrain)
-train_pred_inverse = scaler.inverse_transform(train_pred)
-
-
-import matplotlib.pyplot as plt
-plt.plot(train_pred)
-plt.show()
-
-
-
-# %%
-model.save('BEPLtrain.h5')
-
-# %%
 test_pred = model.predict(xtest)
+train_pred_inverse = scaler.inverse_transform(train_pred)
 test_pred_inverse = scaler.inverse_transform(test_pred)
+
 # %%
+import math
+from sklearn.metrics import mean_squared_error
+math.sqrt(mean_squared_error(ytrain,train_pred_inverse))
+# %%
+math.sqrt(mean_squared_error(ytest, test_pred_inverse))
+
+# %%
+#model.save('BEPLtrain.h5')
+#model.save('NIFTY.h5') till jan 15
+# %%
+
+len(test_data)
+978-100
+# %%
+x_input = test_data[878:].reshape(1,-1)
+x_input.shape
+# %%
+temp_input = list(x_input)
+# %%
+temp_input = temp_input[0].tolist() #100 days of data
+# %%
+from numpy import array
+lst_output = []
+n_steps = 100
+i=0
+while(i<30):
+    
