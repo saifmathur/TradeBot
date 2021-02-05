@@ -16,8 +16,10 @@ from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout
 
 
+import math
+from sklearn.metrics import mean_squared_error,accuracy_score
 
-class API:
+class LSTMPrediction:
     
     def __init__(self,symbol):
         self.symbol = symbol
@@ -54,13 +56,29 @@ class API:
             print('Try a different Scrip')
 
 
-    def prepare_data_for_LSTM(self,dataset,timestep=1):
+    def prepare_data_for_LSTM_krish(self,dataset,timestep=1):
         dataX, dataY = [], []
         for i in range(len(dataset)- timestep-1):
             record = dataset[i:(i+timestep),0]
             dataX.append(record)
             dataY.append(dataset[i + timestep, 0])
         return np.array(dataX), np.array(dataY)
+
+
+    def prepare_data_for_LSTM_kaggle(self,dataset):
+        dataX = []
+        dataY = []
+        for i in range(60, len(dataset)):
+            dataX.append(dataset[i-60:i, 0])
+            dataY.append(dataset[i, 0])
+            if i<=61 :
+                print(dataX)
+                print(dataY)
+                print()
+
+        dataX, dataY = np.array(dataX), np.array(dataY)
+        return dataX, dataY
+
 
     def reshape_for_LSTM(self,train_data, test_data):
         train_data = train_data.reshape(train_data.shape[0],train_data.shape[1],1)
@@ -74,8 +92,8 @@ class API:
         model.add(LSTM(lstm_units,return_sequences=True,input_shape=shape))
         if lstm_layers_after_main > 2 and lstm_layers_after_main < 5:
             dropout = 0.4
-        elif lstm_layers_after_main < 2:
-            dropout = 0.
+        elif lstm_layers_after_main <= 2:
+            dropout = 0.1
         for i in range(lstm_layers_after_main):
             model.add(LSTM(lstm_units,return_sequences=True))
             if i % 2 == 0:
@@ -91,24 +109,47 @@ class API:
 
 
 
-symbol = str(input('ENTER SYMBOL: '))+'.NS'
-obj = API('TCS.NS')
+
+class MovingAveragePrediction:
+    def __init__(self, symbol):
+        self.symbol = symbol
+
+    
+
+
+#%%
+symbol = str.upper(str(input('ENTER SYMBOL: ')))+'.NS'
+obj = LSTMPrediction(symbol)
 df,dictionary = obj.fetchFromYahoo()
 train_data, test_data = obj.get_train_test_dataset(df)
-#prepare seperate for train and test
-xtrain, ytrain = obj.prepare_data_for_LSTM(train_data, timestep = 100)
-xtest, ytest = obj.prepare_data_for_LSTM(test_data, timestep = 100)
 
-#shaping data for LSTM
+
+
+xtrain, ytrain = obj.prepare_data_for_LSTM_kaggle(train_data)
+xtest, ytest = obj.prepare_data_for_LSTM_kaggle(test_data)
+
+
 xtrain, xtest = obj.reshape_for_LSTM(xtrain,xtest)
 
-#create model
-model = obj.create_LSTM_model(lstm_layers_after_main=4,
-                                lstm_units=100,
-                                shape=(xtrain.shape[1],xtrain.shape[2])
+model = obj.create_LSTM_model(lstm_layers_after_main=2,
+                                lstm_units=64,
+                                shape=(xtrain.shape[1],1)
                                 )
 
-history = model.fit(xtrain,ytrain,batch_size=32,epochs=10,validation_data=(xtest,ytest))
+
+model.fit(xtrain,ytrain,batch_size=16,epochs=10,validation_data=(xtest,ytest))
+
+
+
+
+# predictions = model.predict(xtest)
+# predictions = Scaler.inverse_transform(predictions)
+
+
+#%%
+test_data_new = train_data[len(train_data) - 60: , :] 
+x_test = []
+y_test = df.values[len(train_data):, :]
 
 
 

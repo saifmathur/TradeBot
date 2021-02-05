@@ -10,6 +10,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+from PredictStock import Insight
+
+obj = Insight('TCS.NS')
+df,dictionary = obj.fetchFromYahoo()
+
+
+#%%
+
+
+
 
 def fetchFromYahoo(symbol,**kwargs):
         yobj = yf.Ticker(symbol)
