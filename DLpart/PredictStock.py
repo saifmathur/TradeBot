@@ -141,16 +141,28 @@ model.fit(xtrain,ytrain,batch_size=16,epochs=10,validation_data=(xtest,ytest))
 
 
 
-
-# predictions = model.predict(xtest)
-# predictions = Scaler.inverse_transform(predictions)
-
-
 #%%
-test_data_new = train_data[len(train_data) - 60: , :] 
-x_test = []
-y_test = df.values[len(train_data):, :]
+predictions = model.predict(xtest)
+predictions_inverse = Scaler.inverse_transform(predictions)
 
 
-
+# %%
+rmse = np.sqrt(np.mean((predictions - ytest) ** 2))
+# %%
+# Plot the data
+train_data_len = len(train_data)
+train = pd.DataFrame(data=Scaler.inverse_transform(train_data),columns={'Close'})
+valid = pd.DataFrame(data=Scaler.inverse_transform(test_data[60:,:]),columns={'Close'})
+valid['Predictions'] = predictions_inverse
+# Visualize the data
+plt.figure(figsize=(16,8))
+plt.title('Model')
+plt.xlabel('Date', fontsize=18)
+plt.ylabel('Close Price', fontsize=18)
+plt.plot(train['Close'])
+plt.plot(valid[['Close', 'Predictions']])
+plt.legend(['Train', 'Val', 'Predictions'], loc='lower right')
+plt.show()
+# %%
+print(valid)
 # %%
