@@ -86,7 +86,7 @@ class LSTMPrediction:
         return train_data, test_data
 
 
-    def create_LSTM_model(self,lstm_layers_after_main=0,lstm_units=1,shape=(),loss='mean_squared_error',optimizer='adam'):
+    def create_LSTM_model(self,lstm_layers_after_main=0,lstm_units=32,shape=(),loss='mean_squared_error',optimizer='adam'):
         dropout = 0.0
         model = Sequential()
         model.add(LSTM(lstm_units,return_sequences=True,input_shape=shape))
@@ -132,28 +132,28 @@ xtest, ytest = obj.prepare_data_for_LSTM_kaggle(test_data)
 xtrain, xtest = obj.reshape_for_LSTM(xtrain,xtest)
 
 model = obj.create_LSTM_model(lstm_layers_after_main=2,
-                                lstm_units=64,
+                                lstm_units=32,
                                 shape=(xtrain.shape[1],1)
                                 )
 
 
 model.fit(xtrain,ytrain,batch_size=16,epochs=10,validation_data=(xtest,ytest))
 
-
-
-#%%
 predictions = model.predict(xtest)
 predictions_inverse = Scaler.inverse_transform(predictions)
-
-
-# %%
 rmse = np.sqrt(np.mean((predictions - ytest) ** 2))
-# %%
+rmse
+
 # Plot the data
 train_data_len = len(train_data)
+
+index_for_date = pd.DataFrame(df.index)
 train = pd.DataFrame(data=Scaler.inverse_transform(train_data),columns={'Close'})
+train_size = int(len(df['Close'])*0.70)
+
 valid = pd.DataFrame(data=Scaler.inverse_transform(test_data[60:,:]),columns={'Close'})
 valid['Predictions'] = predictions_inverse
+
 # Visualize the data
 plt.figure(figsize=(16,8))
 plt.title('Model')
@@ -163,6 +163,6 @@ plt.plot(train['Close'])
 plt.plot(valid[['Close', 'Predictions']])
 plt.legend(['Train', 'Val', 'Predictions'], loc='lower right')
 plt.show()
-# %%
+
 print(valid)
-# %%
+
