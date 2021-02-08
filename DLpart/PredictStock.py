@@ -9,15 +9,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 Scaler = MinMaxScaler(feature_range=(0,1))
 
-
+from sklearn.linear_model import LinearRegression
 
 #imports for model
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout
 
 
+from sklearn.model_selection import train_test_split
+
 import math
 from sklearn.metrics import mean_squared_error,accuracy_score
+
 
 class LSTMPrediction:
     
@@ -30,7 +33,7 @@ class LSTMPrediction:
         tickerDict = yobj.info
         #print(yobj.info.keys())
         df = yobj.history(period="max")
-        df = df.drop(['Dividends','Stock Splits'],axis=1)
+        df = df.drop(['Stock Splits','Dividends'],axis=1)
         df.index =  pd.to_datetime(df.index)
         #print('\n'+tickerDict['longBusinessSummary'])
         print(df.tail())
@@ -38,7 +41,7 @@ class LSTMPrediction:
         return df,tickerDict
        
     
-    def get_train_test_dataset(self,df):
+    def get_train_test_dataset(self,df,training_size=0.70,testing_size=0.30):
         try:
             print('this will return a training and test data')
             print('\n'+'Recent Data' + '\n',df.tail())
@@ -47,8 +50,8 @@ class LSTMPrediction:
             print('MIN CLOSE: ',df['Close'].min())
             close_price = df.reset_index()['Close']
             close_price = Scaler.fit_transform(np.array(close_price).reshape(-1,1))
-            train_size = int(len(close_price)*0.70)
-            test_size = int(len(close_price*0.30))
+            train_size = int(len(close_price)*training_size)
+            test_size = int(len(close_price*testing_size))
             train_data = close_price[0:train_size,:]
             test_data = close_price[train_size:len(close_price),:1]
             return train_data,test_data
@@ -110,19 +113,45 @@ class LSTMPrediction:
 
 
 
-class MovingAveragePrediction:
-    def __init__(self, symbol):
-        self.symbol = symbol
+class LinearRegPrediction:
 
-    
+    def get_preds_lin_reg(self, df, target_col='Close'):
+        """
+        df - dataset
+        target_col - prediction column
+        N - use previous N values to do prediction
+        pred_min - all predictions should be >= Pred_min
+        offset - for df we only do predictions for df[offset:]
 
-
+        twoHundredDayAverage
+        trailingAnnualDividendYield
+        payoutRatio
+        trailingAnnualDividendRate
+        marketCap
+        averageVolume
+        dividendYield
+        profitMargins
+        """
+        regressor = LinearRegression()
+        x = df.drop(target_col, axis=1)
+        y = df[target_col]
+        xtrain, xtest, ytrain, ytest = train_test_split(x,y,test_size=0.1, random_state=0)
+        
+        regressor.fit(xtrain, ytrain)
+        y_pred = regressor.predict(xtest)
+        ytest = np.array(ytest).reshape(-1,1)
+        y_pred = np.array(y_pred).reshape(-1,1)
+        print(regressor.score(ytest,y_pred))
+        #pred_min = min(y_pred)
+        #print(pred_min)
+        valid = pd.DataFrame()
+        valid['Valid'] = ytest
+        valid['Prediction'] = y_pred
+        print('Standard Deviation: ',np.std(y_pred))
+        print('RMSE: ' , np.sqrt(mean_squared_error(ytest,y_pred)))
+        
+       
 #%%
-symbol = str.upper(str(input('ENTER SYMBOL: ')))+'.NS'
-obj = LSTMPrediction(symbol)
-df,dictionary = obj.fetchFromYahoo()
-train_data, test_data = obj.get_train_test_dataset(df)
-
 
 
 xtrain, ytrain = obj.prepare_data_for_LSTM_kaggle(train_data)
