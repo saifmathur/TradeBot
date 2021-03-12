@@ -28,11 +28,11 @@ class LSTMPrediction:
         self.symbol = symbol
         
 
-    def fetchFromYahoo(self):
+    def fetchFromYahoo(self,timeframe='max'):
         yobj = yf.Ticker(self.symbol)
         tickerDict = yobj.info
         #print(yobj.info.keys())
-        df = yobj.history(period="max")
+        df = yobj.history(period=timeframe)
         df = df.drop(['Stock Splits','Dividends'],axis=1)
         df.index =  pd.to_datetime(df.index)
         #print('\n'+tickerDict['longBusinessSummary'])
@@ -150,9 +150,61 @@ class LinearRegPrediction:
         print('Standard Deviation: ',np.std(y_pred))
         print('RMSE: ' , np.sqrt(mean_squared_error(ytest,y_pred)))
         
-       
+
+class Technicals:
+    def EMA(self,ticker='',timeframe=9,on_field='Close'):
+        yobj = yf.Ticker(ticker)
+        df = yobj.history(period="1y")
+        df = df.drop(['Stock Splits','Dividends'],axis=1)
+        df.index =  pd.to_datetime(df.index)
+        EMA = df[on_field].ewm(span=timeframe, adjust=False).mean()
+        df_new = df[[on_field]]
+        df_new.reset_index(level=0, inplace=True)
+        df_new.columns=['ds','y']
+        plt.figure(figsize=(16,8))
+        plt.plot(df_new.ds, df_new.y, label='EMA')
+        plt.plot(df_new.ds, EMA, label='EMA line',color='red')
+        plt.show()
+        print('Latest EMA on '+on_field+': ',EMA[len(EMA)-1])
+        return EMA
+
+
+    def MACD(self,ticker='',on_field='Close'):
+        yobj = yf.Ticker(ticker)
+        df = yobj.history(period="1y")
+        df = df.drop(['Stock Splits','Dividends'],axis=1)
+        df.index =  pd.to_datetime(df.index)
+        df_new = df[[on_field]]
+        df_new.reset_index(level=0, inplace=True)
+        df_new.columns=['ds','y']
+        #df_new.head()  
+        EMA12 = df_new.y.ewm(span=12, adjust=False).mean()
+        EMA26 = df_new.y.ewm(span=26, adjust=False).mean()
+        MACD = EMA12-EMA26
+        EMA9 = MACD.ewm(span=9, adjust=False).mean()
+        plt.figure(figsize=(16,8))
+        plt.plot(df_new.ds, MACD, label=ticker+' MACD', color='blue')
+        plt.plot(df_new.ds, EMA9, label=ticker+' Signal Line', color='red')
+        plt.legend(loc='upper left')
+        plt.show()
+
+
+
 #%%
 
+obj = LSTMPrediction('PNB.NS')
+df, dictionary = obj.fetchFromYahoo()
+
+#%%
+obj2 = Technicals()
+EMA = obj2.EMA('PNB.NS',50)
+obj2.MACD('PNB.NS')
+
+
+
+#%%
+
+train_data, test_data = obj.get_train_test_dataset(df)
 
 xtrain, ytrain = obj.prepare_data_for_LSTM_kaggle(train_data)
 xtest, ytest = obj.prepare_data_for_LSTM_kaggle(test_data)
