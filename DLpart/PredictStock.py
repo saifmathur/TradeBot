@@ -11,6 +11,7 @@ Scaler = MinMaxScaler(feature_range=(0,1))
 
 from sklearn.linear_model import LinearRegression
 
+
 #imports for model
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout
@@ -152,8 +153,11 @@ class LinearRegPrediction:
         
 
 class Technicals:
-    def EMA(self,ticker='',timeframe=9,on_field='Close'):
-        yobj = yf.Ticker(ticker)
+    def __init__(self,symbol):
+        self.symbol = symbol
+
+    def EMA(self,timeframe=9,on_field='Close'):
+        yobj = yf.Ticker(self.symbol)
         df = yobj.history(period="1y")
         df = df.drop(['Stock Splits','Dividends'],axis=1)
         df.index =  pd.to_datetime(df.index)
@@ -162,15 +166,15 @@ class Technicals:
         df_new.reset_index(level=0, inplace=True)
         df_new.columns=['ds','y']
         plt.figure(figsize=(16,8))
-        plt.plot(df_new.ds, df_new.y, label='EMA')
+        plt.plot(df_new.ds, df_new.y, label='price')
         plt.plot(df_new.ds, EMA, label='EMA line',color='red')
         plt.show()
         print('Latest EMA on '+on_field+': ',EMA[len(EMA)-1])
         return EMA
 
 
-    def MACD(self,ticker='',on_field='Close'):
-        yobj = yf.Ticker(ticker)
+    def MACD(self,on_field='Close'):
+        yobj = yf.Ticker(self.symbol)
         df = yobj.history(period="1y")
         df = df.drop(['Stock Splits','Dividends'],axis=1)
         df.index =  pd.to_datetime(df.index)
@@ -183,10 +187,96 @@ class Technicals:
         MACD = EMA12-EMA26
         EMA9 = MACD.ewm(span=9, adjust=False).mean()
         plt.figure(figsize=(16,8))
-        plt.plot(df_new.ds, MACD, label=ticker+' MACD', color='blue')
-        plt.plot(df_new.ds, EMA9, label=ticker+' Signal Line', color='red')
+        #plt.plot(df_new.ds, df_new.y, label='price')
+        plt.plot(df_new.ds, MACD, label=self.symbol+' MACD', color='blue')
+        plt.plot(df_new.ds, EMA9, label=self.symbol+' Signal Line', color='red')
         plt.legend(loc='upper left')
         plt.show()
+
+    def RSI(self, period = 14):
+        # If the RSI value is over 70, the security is considered overbought, if the value is lower than 30,
+        # it is considered to be oversold
+        # Using a conservative approach, sell when the RSI value intersects the overbought line
+        # buy when the value intersects the oversold line (for blue chip stocks)
+        yobj = yf.Ticker(self.symbol)
+        df = yobj.history(period="1y")
+        df = df.drop(['Stock Splits','Dividends'],axis=1)
+        df_index =  pd.to_datetime(df.index)
+        print(df.index)
+        change = []
+        gain = []
+        loss = []
+        AvgGain = []
+        AvgLoss = []
+        RS = []
+        RSI = []
+        df_new = pd.DataFrame(df['Close'])
+        change.insert(0,0)
+
+        #change calc
+        for i in range(1,len(df_new)):
+            diff = df_new.Close[i] - df_new.Close[i-1]
+            change.append(diff)    
+        df_new['Change'] = change
+        
+        #Gain and loss
+        for i in range(len(df_new)):
+            if df_new.Change[i] > 0:
+                gain.append(df_new.Change[i])
+                loss.append(0)
+            elif df_new.Change[i] < 0:
+                loss.append(abs(df_new.Change[i]))
+                gain.append(0)
+            else:
+                gain.append(0)
+                loss.append(0)
+        
+        df_new['Gain'] = gain
+        df_new['Loss'] = loss
+
+        #average gain/loss
+        averageSum_forgain = 0
+        averageSum_forloss = 0
+        averageGain = 0
+        averageLoss = 0
+        
+        count = 1
+        for i in range(0,len(df_new)):
+            averageSum_forgain = averageSum_forgain + df_new.Gain[i]
+            averageGain = averageSum_forgain/count
+            AvgGain.insert(i,round(averageGain,4))    
+            averageSum_forloss = averageSum_forloss + df_new.Loss[i]
+            averageLoss = averageSum_forloss/count
+            AvgLoss.insert(i,round(averageLoss,4))
+            count+=1
+
+            if averageGain == 0 or averageLoss == 0:
+                RS.append(0.0)
+            else:
+                RS.append(averageGain/averageLoss)    
+            
+        
+        df_new['AvgGain'] = AvgGain
+        df_new['AvgLoss'] = AvgLoss
+        df_new['RS'] = RS
+        rsi = 0
+        for i in range(0,len(df_new)):
+            rsi = 100 - 100/(1+df_new.RS[i])
+            RSI.append(round(rsi,2))
+
+        df_new['RSI'] = RSI
+
+
+        return df_new
+
+        
+
+        
+        
+        
+
+
+
 
 
 
@@ -196,12 +286,13 @@ obj = LSTMPrediction('PNB.NS')
 df, dictionary = obj.fetchFromYahoo()
 
 #%%
-obj2 = Technicals()
-EMA = obj2.EMA('PNB.NS',50)
-obj2.MACD('PNB.NS')
+obj2 = Technicals('PNB.NS')
+#EMA = obj2.EMA(50)
+#obj2.MACD()
+df_new = obj2.RSI()
 
-
-
+#%%
+4-6
 #%%
 
 train_data, test_data = obj.get_train_test_dataset(df)
