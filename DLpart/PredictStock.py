@@ -25,15 +25,15 @@ from sklearn.metrics import mean_squared_error,accuracy_score
 
 class LSTMPrediction:
     
-    def __init__(self,symbol):
+    def __init__(self,symbol,look_back):
         self.symbol = symbol
-        
+        self.timeframe = look_back
 
-    def fetchFromYahoo(self,timeframe='max'):
+    def fetchFromYahoo(self):
         yobj = yf.Ticker(self.symbol)
         tickerDict = yobj.info
         #print(yobj.info.keys())
-        df = yobj.history(period=timeframe)
+        df = yobj.history(period=self.timeframe)
         df = df.drop(['Stock Splits','Dividends'],axis=1)
         df.index =  pd.to_datetime(df.index)
         #print('\n'+tickerDict['longBusinessSummary'])
@@ -271,7 +271,7 @@ class Technicals:
         print('\nCurrent RSI value: ' , df_new['RSI'][-1])
         return df_new
 
-        
+    
 
 
 
