@@ -169,7 +169,7 @@ class Technicals:
         plt.plot(df_new.ds, df_new.y, label='price')
         plt.plot(df_new.ds, EMA, label='EMA line',color='red')
         plt.show()
-        print('Latest EMA on '+on_field+': ',EMA[len(EMA)-1])
+        print('Latest EMA on '+on_field+': ',EMA[len(EMA)-1],'\n')
         return EMA
 
 
@@ -192,6 +192,7 @@ class Technicals:
         plt.plot(df_new.ds, EMA9, label=self.symbol+' Signal Line', color='red')
         plt.legend(loc='upper left')
         plt.show()
+        print('\n')
 
     def RSI(self, period = 14):
         # If the RSI value is over 70, the security is considered overbought, if the value is lower than 30,
@@ -202,7 +203,7 @@ class Technicals:
         df = yobj.history(period="1y")
         df = df.drop(['Stock Splits','Dividends'],axis=1)
         df_index =  pd.to_datetime(df.index)
-        print(df.index)
+        
         change = []
         gain = []
         loss = []
@@ -210,15 +211,13 @@ class Technicals:
         AvgLoss = []
         RS = []
         RSI = []
-        df_new = pd.DataFrame(df['Close'])
+        df_new = pd.DataFrame(df['Close'], index=df.index)
         change.insert(0,0)
-
         #change calc
         for i in range(1,len(df_new)):
             diff = df_new.Close[i] - df_new.Close[i-1]
-            change.append(diff)    
+            change.append(diff)  
         df_new['Change'] = change
-        
         #Gain and loss
         for i in range(len(df_new)):
             if df_new.Change[i] > 0:
@@ -265,16 +264,14 @@ class Technicals:
             RSI.append(round(rsi,2))
 
         df_new['RSI'] = RSI
-
-
+        plt.figure(figsize=(16,8))
+        plt.plot(df_index[len(df_new)-period:len(df_new)],df_new.iloc[len(df_new)-period:len(df_new),-1], label='RSI value')
+        plt.legend(loc='upper left')
+        plt.show()
+        print('\nCurrent RSI value: ' , df_new['RSI'][-1])
         return df_new
 
         
-
-        
-        
-        
-
 
 
 
@@ -287,12 +284,12 @@ df, dictionary = obj.fetchFromYahoo()
 
 #%%
 obj2 = Technicals('PNB.NS')
-#EMA = obj2.EMA(50)
-#obj2.MACD()
+EMA = obj2.EMA(50)
+obj2.MACD()
 df_new = obj2.RSI()
 
 #%%
-4-6
+
 #%%
 
 train_data, test_data = obj.get_train_test_dataset(df)
