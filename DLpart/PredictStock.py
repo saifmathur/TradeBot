@@ -264,6 +264,8 @@ class Technicals:
             RSI.append(round(rsi,2))
 
         df_new['RSI'] = RSI
+        
+        
         plt.figure(figsize=(16,8))
         plt.plot(df_index[len(df_new)-period:len(df_new)],df_new.iloc[len(df_new)-period:len(df_new),-1], label='RSI value')
         plt.legend(loc='upper left')
@@ -271,9 +273,29 @@ class Technicals:
         print('\nCurrent RSI value: ' , df_new['RSI'][-1])
         return df_new
 
+    def BollingerBands(self, degree_of_freedom = 20, period = 20, on_field = 'Close'):    
+        yobj = yf.Ticker(self.symbol)
+        df = yobj.history(period="1y")
+        df = df.drop(['Stock Splits','Dividends'],axis=1)
+        df_index =  pd.to_datetime(df.index)
+        #print(df[on_field].rolling(window = period).sum()/period)
+        df2 = df[on_field].rolling(window = period).sum()/period
+        
+        
+        
+        
+        plt.plot(df[on_field],color='blue')
+        plt.plot(df[on_field].rolling(window = period).sum()/period,color='red')
+        plt.show()
+        
+        return df2
+
+
+
+class OptionChainAnalysis:
+    def __init__(self,view_options_contract_for,symbol,expiry_date,strike_price):
+        super().__init__()
     
-
-
 
 
 
@@ -284,11 +306,12 @@ df, dictionary = obj.fetchFromYahoo()
 
 #%%
 obj2 = Technicals('PNB.NS')
-EMA = obj2.EMA(50)
-obj2.MACD()
-df_new = obj2.RSI()
-
+#EMA = obj2.EMA(20)
+#obj2.MACD()
+#df_new = obj2.RSI()
+d =obj2.BollingerBands()
 #%%
+
 
 #%%
 
