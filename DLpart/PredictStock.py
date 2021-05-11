@@ -1,5 +1,5 @@
 #%%
-#imports
+#importing...
 import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
@@ -15,10 +15,7 @@ from sklearn.linear_model import LinearRegression
 #imports for model
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout
-
-
 from sklearn.model_selection import train_test_split
-
 import math
 from sklearn.metrics import mean_squared_error,accuracy_score
 
@@ -117,22 +114,7 @@ class LSTMPrediction:
 class LinearRegPrediction:
 
     def get_preds_lin_reg(self, df, target_col='Close'):
-        """
-        df - dataset
-        target_col - prediction column
-        N - use previous N values to do prediction
-        pred_min - all predictions should be >= Pred_min
-        offset - for df we only do predictions for df[offset:]
-
-        twoHundredDayAverage
-        trailingAnnualDividendYield
-        payoutRatio
-        trailingAnnualDividendRate
-        marketCap
-        averageVolume
-        dividendYield
-        profitMargins
-        """
+       
         regressor = LinearRegression()
         x = df.drop(target_col, axis=1)
         y = df[target_col]
@@ -193,6 +175,9 @@ class Technicals:
         plt.legend(loc='upper left')
         plt.show()
         print('\n')
+        print(EMA9[len(EMA9)-1], MACD[len(MACD)-1])
+        return EMA9[len(EMA9)-1], MACD[len(MACD)-1]  #latest value of EMA9 line and MACD value
+        
 
     def RSI(self, period = 14):
         # If the RSI value is over 70, the security is considered overbought, if the value is lower than 30,
@@ -271,7 +256,8 @@ class Technicals:
         plt.legend(loc='upper left')
         plt.show()
         print('\nCurrent RSI value: ' , df_new['RSI'][-1])
-        return df_new
+        Latest_RSI_value = float(df_new['RSI'][-1])
+        return df_new, Latest_RSI_value
 
     def BollingerBands(self, degree_of_freedom = 20, period = 20, on_field = 'Close'):    
         yobj = yf.Ticker(self.symbol)
@@ -279,16 +265,39 @@ class Technicals:
         df = df.drop(['Stock Splits','Dividends'],axis=1)
         df_index =  pd.to_datetime(df.index)
         #print(df[on_field].rolling(window = period).sum()/period)
-        df2 = df[on_field].rolling(window = period).sum()/period
+        #SMA calculated
+        MA = df[on_field].rolling(window = period).sum()/period
+        typical_price = []       
+        #printing SMA
         
         
+        #printing BOLU
+        BOLU = []
+        BOLD = []
+        for i in range(len(df)-period,len(df)):
+            #typical price = (high+low+close)/3
+            typical_price.append((df.iloc[i,1] + df.iloc[i,2] + df.iloc[i,3]) / 3)
         
+        typical_price = pd.Series(typical_price)
+
+        for i in range(len(typical_price)):
+            std = 2*(    math.sqrt(  math.pow(i-typical_price.mean(),2) / len(typical_price) )    )   
+            BOLU.append(typical_price[i] + std)
+            BOLD.append(typical_price[i] - std)
+
+        # BOLU = pd.Series(BOLU)
+        # BOLD = pd.Series(BOLD)
+
+        print("Middle value: " + str(MA.iloc[-1]))
+        print("Upper Band: " + str(BOLU[-1]))
+        print("Lower Band: " + str(BOLD[-1]))
+
+
+    
         
-        plt.plot(df[on_field],color='blue')
-        plt.plot(df[on_field].rolling(window = period).sum()/period,color='red')
-        plt.show()
+
+    
         
-        return df2
 
 
 
@@ -301,60 +310,78 @@ class OptionChainAnalysis:
 
 #%%
 
-obj = LSTMPrediction('PNB.NS')
-df, dictionary = obj.fetchFromYahoo()
+#obj = LSTMPrediction('PNB.NS')
+#df, dictionary = obj.fetchFromYahoo()
 
-#%%
-obj2 = Technicals('PNB.NS')
+
+obj2 = Technicals('NMDC.NS')
 #EMA = obj2.EMA(20)
-#obj2.MACD()
-#df_new = obj2.RSI()
+obj2.MACD()
+df_new, RSI = obj2.RSI()
 d =obj2.BollingerBands()
 #%%
 
 
 #%%
 
-train_data, test_data = obj.get_train_test_dataset(df)
+# train_data, test_data = obj.get_train_test_dataset(df)
 
-xtrain, ytrain = obj.prepare_data_for_LSTM_kaggle(train_data)
-xtest, ytest = obj.prepare_data_for_LSTM_kaggle(test_data)
-
-
-xtrain, xtest = obj.reshape_for_LSTM(xtrain,xtest)
-
-model = obj.create_LSTM_model(lstm_layers_after_main=2,
-                                lstm_units=32,
-                                shape=(xtrain.shape[1],1)
-                                )
+# xtrain, ytrain = obj.prepare_data_for_LSTM_kaggle(train_data)
+# xtest, ytest = obj.prepare_data_for_LSTM_kaggle(test_data)
 
 
-model.fit(xtrain,ytrain,batch_size=16,epochs=10,validation_data=(xtest,ytest))
+# xtrain, xtest = obj.reshape_for_LSTM(xtrain,xtest)
 
-predictions = model.predict(xtest)
-predictions_inverse = Scaler.inverse_transform(predictions)
-rmse = np.sqrt(np.mean((predictions - ytest) ** 2))
-rmse
+# model = obj.create_LSTM_model(lstm_layers_after_main=2,
+#                                 lstm_units=32,
+#                                 shape=(xtrain.shape[1],1)
+#                                 )
 
-# Plot the data
-train_data_len = len(train_data)
 
-index_for_date = pd.DataFrame(df.index)
-train = pd.DataFrame(data=Scaler.inverse_transform(train_data),columns={'Close'})
-train_size = int(len(df['Close'])*0.70)
+# model.fit(xtrain,ytrain,batch_size=16,epochs=10,validation_data=(xtest,ytest))
 
-valid = pd.DataFrame(data=Scaler.inverse_transform(test_data[60:,:]),columns={'Close'})
-valid['Predictions'] = predictions_inverse
+# predictions = model.predict(xtest)
+# predictions_inverse = Scaler.inverse_transform(predictions)
+# rmse = np.sqrt(np.mean((predictions - ytest) ** 2))
+# rmse
 
-# Visualize the data
-plt.figure(figsize=(16,8))
-plt.title('Model')
-plt.xlabel('Date', fontsize=18)
-plt.ylabel('Close Price', fontsize=18)
-plt.plot(train['Close'])
-plt.plot(valid[['Close', 'Predictions']])
-plt.legend(['Train', 'Val', 'Predictions'], loc='lower right')
-plt.show()
+# # Plot the data
+# train_data_len = len(train_data)
 
-print(valid)
+# index_for_date = pd.DataFrame(df.index)
+# train = pd.DataFrame(data=Scaler.inverse_transform(train_data),columns={'Close'})
+# train_size = int(len(df['Close'])*0.70)
 
+# valid = pd.DataFrame(data=Scaler.inverse_transform(test_data[60:,:]),columns={'Close'})
+# valid['Predictions'] = predictions_inverse
+
+# # Visualize the data
+# plt.figure(figsize=(16,8))
+# plt.title('Model')
+# plt.xlabel('Date', fontsize=18)
+# plt.ylabel('Close Price', fontsize=18)
+# plt.plot(train['Close'])
+# plt.plot(valid[['Close', 'Predictions']])
+# plt.legend(['Train', 'Val', 'Predictions'], loc='lower right')
+# plt.show()
+
+# print(valid)
+
+#%%
+import math
+import numpy as np
+a = [12,23,34,542,123,4321,12,34,6,7,9863,2,4,65,3,745,74]
+a = np.array(a)
+std_for_a = []
+for i in a:
+    std = math.sqrt(((i-a.mean())**2)/len(a))
+    std_for_a.append(std)
+
+print(std_for_a)
+
+# %%
+import numpy as np
+a = [1,2,3,4]
+
+np.array(a).sum()
+# %%
