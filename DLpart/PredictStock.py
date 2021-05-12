@@ -176,10 +176,19 @@ class Technicals:
         plt.show()
         print('\n')
         print(EMA9[len(EMA9)-1], MACD[len(MACD)-1])
+
+        
+        # if MACD[len(MACD)-1]-EMA9[len(EMA9)-1] <= 4 and MACD[len(MACD)-1]-EMA9[len(EMA9)-1] >= 0:  
+        #     print('ALERT: MACD crossover about to occur, Sell side')
+        # elif MACD[len(MACD)-1]-EMA9[len(EMA9)-1] >= -4 and MACD[len(MACD)-1]-EMA9[len(EMA9)-1] <= 0:
+        #     print('ALERT: MACD crossover about to occur, Buy side')
+        # else:
+        #     print('No MACD crossovers')
+
         return EMA9[len(EMA9)-1], MACD[len(MACD)-1]  #latest value of EMA9 line and MACD value
         
 
-    def RSI(self, period = 14):
+    def RSI_backUpCode(self, period = 14):
         # If the RSI value is over 70, the security is considered overbought, if the value is lower than 30,
         # it is considered to be oversold
         # Using a conservative approach, sell when the RSI value intersects the overbought line
@@ -220,7 +229,7 @@ class Technicals:
 
         #average gain/loss
         averageSum_forgain = 0
-        averageSum_forloss = 0
+        averageSum_forloss = 0 
         averageGain = 0
         averageLoss = 0
         
@@ -259,9 +268,88 @@ class Technicals:
         Latest_RSI_value = float(df_new['RSI'][-1])
         return df_new, Latest_RSI_value
 
+    def RSI(self,period = 14):
+        yobj = yf.Ticker(self.symbol)
+        df = yobj.history(period="1mo")
+        df = df.drop(['Stock Splits','Dividends'],axis=1)
+        df_index =  pd.to_datetime(df.index)
+        
+        change = []
+        gain = []
+        loss = []
+        AvgGain = []
+        AvgLoss = []
+        RS = []
+        RSI = []
+        df_new = pd.DataFrame(df['Close'], index=df.index)
+        change.insert(0,0)
+        #change calc
+        for i in range(1,len(df_new)):
+            diff = df_new.Close[i] - df_new.Close[i-1]
+            change.append(diff)  
+        
+        df_new['Change'] = change
+        
+        #Gain and loss
+        for i in range(len(df_new)):
+            if df_new.Change[i] > 0:
+                gain.append(df_new.Change[i])
+                loss.append(0)
+            elif df_new.Change[i] < 0:
+                loss.append(abs(df_new.Change[i]))
+                gain.append(0)
+            else:
+                gain.append(0)
+                loss.append(0)
+        
+        df_new['Gain'] = gain
+        df_new['Loss'] = loss
+
+        
+        #average gain/loss
+        averageSum_forgain = 0
+        averageSum_forloss = 0 
+        averageGain = 0
+        averageLoss = 0
+        
+        count = 1
+        for i in range(0,len(df_new)):
+            averageSum_forgain = averageSum_forgain + df_new.Gain[i]
+            averageGain = averageSum_forgain/count
+            AvgGain.insert(i,averageGain)    
+            averageSum_forloss = averageSum_forloss + df_new.Loss[i]
+            averageLoss = averageSum_forloss/count
+            AvgLoss.insert(i,averageLoss)
+            count+=1
+
+            if averageGain == 0 or averageLoss == 0:
+                RS.append(0.0)
+            else:
+                RS.append(averageGain/averageLoss)    
+            
+        
+        df_new['AvgGain'] = AvgGain
+        df_new['AvgLoss'] = AvgLoss
+        df_new['RS'] = RS
+        rsi = 0
+        for i in range(len(df)-14,len(df)):
+            rsi = 100 - 100/(1+df_new.RS[i])
+            RSI.append(round(rsi,2))
+
+        #df_new['RSI'] = RSI
+        
+        
+        plt.figure(figsize=(16,8))
+        plt.plot(df_index[len(df_new)-period:len(df_new)],RSI, label='RSI value')
+        plt.legend(loc='upper left')
+        plt.show()
+        print('\nCurrent RSI value: ' , RSI[len(RSI)-1])
+        Latest_RSI_value = RSI[-1]
+        return df_new, RSI
+
     def BollingerBands(self, degree_of_freedom = 20, period = 20, on_field = 'Close'):    
         yobj = yf.Ticker(self.symbol)
-        df = yobj.history(period="1y")
+        df = yobj.history(period="1mo")
         df = df.drop(['Stock Splits','Dividends'],axis=1)
         df_index =  pd.to_datetime(df.index)
         #print(df[on_field].rolling(window = period).sum()/period)
@@ -293,13 +381,6 @@ class Technicals:
         print("Lower Band: " + str(BOLD[-1]))
 
 
-    
-        
-
-    
-        
-
-
 
 class OptionChainAnalysis:
     def __init__(self,view_options_contract_for,symbol,expiry_date,strike_price):
@@ -314,7 +395,7 @@ class OptionChainAnalysis:
 #df, dictionary = obj.fetchFromYahoo()
 
 
-obj2 = Technicals('NMDC.NS')
+obj2 = Technicals('TATAMOTORS.NS')
 #EMA = obj2.EMA(20)
 obj2.MACD()
 df_new, RSI = obj2.RSI()
@@ -384,4 +465,95 @@ import numpy as np
 a = [1,2,3,4]
 
 np.array(a).sum()
+# %%
+import yfinance as yf
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+def RSI(period = 14):
+    yobj = yf.Ticker("NMDC.NS")
+    df = yobj.history(period="1mo")
+    df = df.drop(['Stock Splits','Dividends'],axis=1)
+    df_index =  pd.to_datetime(df.index)
+    
+    change = []
+    gain = []
+    loss = []
+    AvgGain = []
+    AvgLoss = []
+    RS = []
+    RSI = []
+    df_new = pd.DataFrame(df['Close'], index=df.index)
+    change.insert(0,0)
+    #change calc
+    for i in range(1,len(df_new)):
+        diff = df_new.Close[i] - df_new.Close[i-1]
+        change.append(diff)  
+    
+    df_new['Change'] = change
+    
+    #Gain and loss
+    for i in range(len(df_new)):
+        if df_new.Change[i] > 0:
+            gain.append(df_new.Change[i])
+            loss.append(0)
+        elif df_new.Change[i] < 0:
+            loss.append(abs(df_new.Change[i]))
+            gain.append(0)
+        else:
+            gain.append(0)
+            loss.append(0)
+    
+    df_new['Gain'] = gain
+    df_new['Loss'] = loss
+
+    
+    #average gain/loss
+    averageSum_forgain = 0
+    averageSum_forloss = 0 
+    averageGain = 0
+    averageLoss = 0
+    
+    count = 1
+    for i in range(0,len(df_new)):
+        averageSum_forgain = averageSum_forgain + df_new.Gain[i]
+        averageGain = averageSum_forgain/count
+        AvgGain.insert(i,averageGain)    
+        averageSum_forloss = averageSum_forloss + df_new.Loss[i]
+        averageLoss = averageSum_forloss/count
+        AvgLoss.insert(i,averageLoss)
+        count+=1
+
+        if averageGain == 0 or averageLoss == 0:
+            RS.append(0.0)
+        else:
+            RS.append(averageGain/averageLoss)    
+        
+    
+    df_new['AvgGain'] = AvgGain
+    df_new['AvgLoss'] = AvgLoss
+    df_new['RS'] = RS
+    rsi = 0
+    for i in range(len(df)-14,len(df)):
+        rsi = 100 - 100/(1+df_new.RS[i])
+        RSI.append(round(rsi,2))
+
+    #df_new['RSI'] = RSI
+    
+    
+    plt.figure(figsize=(16,8))
+    plt.plot(df_index[len(df_new)-period:len(df_new)],RSI, label='RSI value')
+    plt.legend(loc='upper left')
+    plt.show()
+    print('\nCurrent RSI value: ' , RSI[len(RSI)-1])
+    Latest_RSI_value = RSI[-1]
+    #return df_new, RSI
+
+        
+
+#%%
+
+# df,rsi = RSI()
+RSI()
+
 # %%
