@@ -130,9 +130,5 @@ temp_input = list(x_input)
 # %%
 temp_input = temp_input[0].tolist() #100 days of data
 # %%
-from numpy import array
-lst_output = []
-n_steps = 100
-i=0
-while(i<30):
+
     

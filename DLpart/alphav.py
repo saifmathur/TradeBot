@@ -3,13 +3,13 @@ from alpha_vantage.timeseries import TimeSeries
 import matplotlib.pyplot as plt
 
 KEY = 'RM2J9YHI19A162UW'
-SYMBOL = 'TTM'
+SYMBOL = 'AAPL'
 INTERVAL = '1min'
 OUTPUT_FORMAT = 'pandas' #or json
  
 def fetch_data_for_one(key, symbol, interval, output_format):
     ts = TimeSeries(key,output_format= output_format)
-    data, metadata = ts.get_intraday('NSE:'+symbol,interval,outputsize='full')
+    data, metadata = ts.get_intraday(symbol,interval,outputsize='full')
     data = data.rename(columns={
         '1. open':'Open',
         '2. high':'High',

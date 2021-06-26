@@ -8,8 +8,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
 from selenium.webdriver.common.keys import Keys
-
-import keys 
+import datetime
+from datetime import time
+import Driver.keys as keys
+#import keys
 saif = keys.Keys_Saif
 kanika = keys.Keys_Kanika
 
@@ -17,7 +19,8 @@ kanika = keys.Keys_Kanika
 class Login:
     def __init__(self, username):
         self.HOME_PAGE = 'https://kite.zerodha.com/'
-        self.DRIVER_PATH = 'chromedriver.exe'
+        self.DRIVER_PATH = 'Driver/chromedriver.exe'
+        #self.DRIVER_PATH = 'chromedriver.exe'
         self.USERNAME = username
 
     def checkPL(self,string):
@@ -34,10 +37,14 @@ class Login:
         options = webdriver.ChromeOptions()
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--incognito")
+        options.add_experimental_option("detach", True)
         #options.add_argument("headless")
-        options.add_argument('--disable-gpu')
+        #options.add_argument('--disable-gpu')
         driver = webdriver.Chrome(DRIVER_PATH, options=options)
         return driver
+
+    
+
 
     def process_information(self):
         driver = self._init_driver(self.DRIVER_PATH)
@@ -97,65 +104,235 @@ class Login:
         for i in range(len(holdings)):
             for j in range(len(holdings[i])):
                 j += 1
-            if j > 8:
-                holdings[i].pop(1)
-                print("\n"+holdings[i][0] +"\n"+ "Pre-Trade qty:" + holdings[i][1])
-                print("Tradeable qty:" + holdings[i][2])
-                print('Average Buying Price: ' + holdings[i][3])
-                print("Current value invested: " , float(str(holdings[i][5]).replace(',','')))
-            if j == 8:
-                print("\n" + holdings[i][0] + "\n" + "Tradeable qty: " + holdings[i][1])
-                print('Average Buying Price: ' + holdings[i][2])
-                print("Current value invested: " , float(str(holdings[i][4]).replace(',','')))
-        
+            try:
+                if j > 8:
+                    holdings[i].pop(1)
+                    print("\n"+holdings[i][0] +"\n"+ "Pre-Trade qty:" + holdings[i][1])
+                    print("Tradeable qty:" + holdings[i][2])
+                    print('Average Buying Price: ' + holdings[i][3])
+                    print("Current value invested: " , float(str(holdings[i][5]).replace(',','')))
+                if j == 8:
+                    print("\n" + holdings[i][0] + "\n" + "Tradeable qty: " + holdings[i][1])
+                    print('Average Buying Price: ' + holdings[i][2])
+                    print("Current value invested: " , float(str(holdings[i][4]).replace(',','')))
+            except ValueError:
+                continue
         #Click on funds, get funds
         WebDriverWait(driver, 3).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div[1]/div/div[2]/div[1]/a[5]/span'))).click()
         available_funds = driver.find_element_by_xpath('/html/body/div[1]/div[2]/div[2]/div/div/div[2]/div[1]/div/table/tbody/tr[1]/td[2]/h1')
-        print()
-        print("Available balance: " , available_funds.text) 
+        print("\nAvailable balance: " , available_funds.text) 
         
         url = driver.command_executor._url
         session_id = driver.session_id
 
-        return url, session_id, float(available_funds.text)
+        return url, session_id, float(str(available_funds.text).replace(',',''))
 
-        #driver.close()     
+    
 
-
+    def AddFunds(self,session_id='',url=''):
+        driver = webdriver.Remote(command_executor = url, desired_capabilities={})
+        driver.close()
+        driver.session_id = session_id
+        driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div[2]/div[1]/a[5]').click()
 
 
 class Trade:
-    def __init__(self, symbol):
+    def __init__(self, symbol, session_id, url):
         self.symbol = symbol
-        self.HOME_PAGE = 'https://kite.zerodha.com/'
-        self.NSE_PAGE = 'https://www.nseindia.com/'
-        self.DRIVER_PATH = 'chromedriver.exe'
+        self.session_id = session_id
+        self.url = url
+    
 
-    def StockSelectionForSwingTrades(self, exchange = 'NSE'):
-        try:
-            if exchange == 'NSE':
-                print()
-
-            else:
-                raise Exception('TradeException')
-        except:
-            print('Trades in BSE are not recommended by this software, due to volatility.')
-
-
-    def StockSelectionForLongTerm(self,exchange = 'NSE'):
-        try:
-            if exchange == 'NSE':
-                print()
-                
-            else:
-                raise Exception('TradeException')
-        except:
-            print('Trades in BSE are not recommended by this software, due to volatility.')
-
-        
-    def BuyStock(self,session_id='',url='', exchange='NSE', order_type = 'CNC', qty =0, swing_trade=0, long_hold = 1, funds = 0, weightage_of_trade = 10):  #these values should be returned by TradeBot
-        driver = webdriver.Remote(command_executor = url, desired_capabilities={})
+    def PlaceBuyOrder(self, qty = 0,limit_price = 0 , funds = 0, market_hours = False, stop_loss=-5, target = 10, longTerm = False, swingTrade = False):
+        driver = webdriver.Remote(command_executor = self.url)
         driver.close()
+        driver.session_id = self.session_id
+        actions = ActionChains(driver)
+        #1.Search for the stock
+        driver.find_element_by_xpath('//*[@id="search-input"]').clear()
+        driver.find_element_by_xpath('//*[@id="search-input"]').send_keys(self.symbol)
+
+        #2.get the result list
+        search_result = driver.find_element_by_xpath('//*[@id="app"]/div[2]/div[1]/div/div[1]/div/div[2]/ul')
+
+        #3.searching the list and selecting the 0th element
+        rows = search_result.find_elements(By.TAG_NAME, "li")
+        hover_over_first_element_of_search = actions.move_to_element(rows[0])
+        hover_over_first_element_of_search.perform()
+
+        #4. get market depth
+        driver.find_element_by_xpath('//*[@id="app"]/div[2]/div[1]/div/div[1]/div/div[2]/ul/div/li[1]/span[3]/button[4]').click()
+        if swingTrade == True:
+            #5. check market hours
+            if market_hours:
+                print('\nmarket hours, limit order will be placed.')
+                #current_price  = float(str(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[1]/div/div[2]/div[2]/span/span[1]').text))
+                #print(current_price)
+                #driver.implicitly_wait(5)
+                #high_price = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[1]/div[2]/span').text)
+                #print(high_price)
+                #previous_closing_price = float(str(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[2]/div[2]/span').text))
+                #low_price = float(str(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[2]/div[1]/span').text))
+                #avg_price = float(str(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[3]/div[2]/span').text))
+                #deciding trend
+                # if current_price < avg_price: #negative
+                #     limit_price = low_price
+                # elif current_price > avg_price: #positive
+                #     limit_price = avg_price
+                
+                #click buy on the market depth
+                driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[1]').click()
+                
+                #select CNC order type
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[1]/div/div[2]/label').click()
+
+                #enter qty
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input').send_keys(str(qty))
+
+                #enter limit price
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[2]/div[2]/div/div[2]/label').click() #click on limit radio
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[2]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[2]/div/input').send_keys(str(limit_price)) #enter price
+
+                #set stop loss and target
+                #stop loss
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[3]/div/div[2]/div[1]/label/span[1]').click()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[3]/div/div[2]/div[2]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[3]/div/div[2]/div[2]/div/input').send_keys(str(stop_loss))
+                #target
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[3]/div/div[3]/div[1]/label/span[2]').click()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[3]/div/div[3]/div[2]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[3]/div/div[3]/div[2]/div/input').send_keys(str(target))
+
+                #final buy click
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[1]').click()
+
+                #close
+                driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()
+
+                
+
+            else:
+                print('\nNon market hours, an AMO(After market Order) will be placed.')
+                #click on buy on market depth
+                driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[1]').click()
+
+                #click on AMO label
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[1]/div/div[3]/label').click()
+
+                #click on CNC product type
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[1]/div/div[2]/label').click()
+
+                #set QTY
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input').send_keys(str(qty))
+
+                #set price to MKT
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[2]/div[2]/div/div[1]/label').click()
+
+                print('\nOrder will be placed on the next trading day, you can modify the order from the "Order" tab.')
+
+                #final click 
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[1]').click()
+
+                #closing the market depth
+                driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()
+
+                #going to order tab
+                driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div[2]/div[1]/a[2]').click()
+                
+                #getting pending order table
+                order_table = driver.find_element_by_xpath('//*[@id="app"]/div[2]/div[2]/div[2]/div/section[1]/div/div/table')
+                rows = order_table.find_elements(By.TAG_NAME,"tr")
+                #print(rows[1].text)
+                action_2 = ActionChains(driver)
+                action_2.move_to_element(rows[1]).perform()
+                driver.implicitly_wait(2)
+                
+                #click on context menu of the first order
+                driver.find_element_by_xpath('/html/body/div[1]/div[2]/div[2]/div[2]/div/section[1]/div/div/table/tbody/tr/td[4]/div/div/span').click()
+                driver.implicitly_wait(2)
+
+                #get menu
+                list_of_order_options = driver.find_element_by_xpath('/html/body/div[1]/div[2]/div[2]/div[2]/div/section[1]/div/div/table/tbody/tr/td[4]/div/ul')
+                items = list_of_order_options.find_elements(By.TAG_NAME,"li")
+                items[6].click() #creating a stop loss and target GTT
+
+                #GTT menu
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[1]/div/div[1]/div[2]/div/div[2]/label').click() #click on sell
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[1]/div/div[2]/div[2]/div[1]/div[2]/label').click() #click on OCO
+
+                #setting stop loss
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[2]/form/div[1]/div[1]/div[3]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[2]/form/div[1]/div[1]/div[3]/div/input').send_keys(str(stop_loss)) #sending stop_loss percentage
+                driver.implicitly_wait(1)
+                price = str(driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[2]/form/div[1]/div[1]/div[2]/div/input').text) #getting the stop loss price
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[2]/form/div[1]/div[3]/div[2]/div[1]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[2]/form/div[1]/div[3]/div[2]/div[1]/div/input').send_keys(str(qty)) #sending qty
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[2]/form/div[1]/div[3]/div[2]/div[2]/div/input').send_keys(price)
+
+                #setting target
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[2]/form/div[2]/div[1]/div[3]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[2]/form/div[2]/div[1]/div[3]/div/input').send_keys(str(target))
+                LTP = str(driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[1]/div/div/div[1]/span[3]').text).replace(',','' )
+                target_price = round(float(LTP)*(target/100) + float(LTP),ndigits=1)
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[2]/form/div[2]/div[3]/div[2]/div[1]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[2]/div/div[2]/form/div[2]/div[3]/div[2]/div[1]/div/input').send_keys(str(qty))
+                driver.find_element_by_xpath('/html/body/div[1]/div[4]/div/div/div/div[2]/div/div[2]/form/div[2]/div[3]/div[2]/div[2]/div/input').clear()
+                driver.find_element_by_xpath('/html/body/div[1]/div[4]/div/div/div/div[2]/div/div[2]/form/div[2]/div[3]/div[2]/div[2]/div/input').send_keys(str(target_price))
+
+                #placing final GTT order 
+                print('\nStop loss and Target orders set via GTT, you will have to authorize the orders if either of them are hit.')
+                driver.find_element_by_xpath('//*[@id="app"]/div[4]/div/div/div/div[3]/div/div/div[2]/button[1]').click()
+
+                #get back to dash
+                driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div[2]/div[1]/a[1]').click()
+        elif longTerm == True:
+            if market_hours:
+                print('\nmarket hours, limit order will be placed.')
+                #click buy on the market depth
+                driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[1]').click()
+                #select CNC order type
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[1]/div/div[2]/label').click()
+                #enter qty
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input').send_keys(str(qty))
+                #enter limit price
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[2]/div[2]/div/div[2]/label').click() #click on limit radio
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[2]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[2]/div/input').send_keys(str(limit_price)) #enter price
+                #final buy click
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[1]').click()
+                #close
+                driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()
+            else:
+                print('\nNon market hours, an AMO(After market Order) will be placed.')
+                #click on buy on market depth
+                driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[1]').click()
+                #click on AMO label
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[1]/div/div[3]/label').click()
+                #click on CNC product type
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[1]/div/div[2]/label').click()
+                #set QTY
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input').clear()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input').send_keys(str(qty))
+                #set price to MKT
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[2]/div[2]/div/div[1]/label').click()
+                print('\nOrder will be placed on the next trading day, you can modify the order from the "Order" tab.')
+                #final click 
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[1]').click()
+                #closing the market depth
+                driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()
+        else:
+            print('No trade type selected.')
+            exit(0)
+
+
+
+    def BuyStock(self,session_id='',url='', exchange='NSE', order_type = 'CNC', qty =0, funds=0, market_hours = False ):
+        driver = webdriver.Remote(command_executor = url)
+        #driver.close()
         driver.session_id = session_id
         actions = ActionChains(driver)
 
@@ -168,88 +345,128 @@ class Trade:
         #rows[0].click()
         hover_over_first_element_of_search = actions.move_to_element(rows[0])
         hover_over_first_element_of_search.perform()
-
+        limit_price = 0
         #get market depth
         driver.find_element_by_xpath('//*[@id="app"]/div[2]/div[1]/div/div[1]/div/div[2]/ul/div/li[1]/span[3]/button[4]').click()
-        current_price  = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[1]/div/div[2]/div[2]/span/span[1]').text)
-        #print(current_price)
-        high_price = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[1]/div[2]/span').text)
-        previous_closing_price = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[2]/div[2]/span').text)
-        low_price = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[2]/div[1]/span').text)
-        avg_price = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[3]/div[2]/span').text)
-        
-        limit_price = 0
-        #deciding trend
-        if current_price < avg_price: #negative
-            limit_price = low_price
-        elif current_price > avg_price: #positive
-            limit_price = avg_price
-
-        #click buy             
-        driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[1]').click()
-        
-        #buy box
-        if exchange == 'BSE':
-            buyBSE = driver.find_element_by_css_selector('#app > form > header > div.exchange-selector > div > div:nth-child(1) > label')
-            buyBSE.click()
-        else:
-            buyNSE = driver.find_element_by_css_selector('#app > form > header > div.exchange-selector > div > div:nth-child(2) > label')
-            buyNSE.click()
-        
-
-        #selecting order type
-        if order_type == 'MIS':
-            print('MIS Service is disabled by this Automated Software...')
-            #driver.find_element_by_css_selector('#app > form > section > div.body > div.product.row > div > div.type.four.columns.su-radio-wrap.checked > label').click()
-        else:
-           driver.find_element_by_css_selector('#app > form > section > div.body > div.product.row > div > div:nth-child(2) > label').click() 
-
-        
-        #send keys for qty and price
-        try:
-            if funds < 20:
-                raise Exception('Funds too low, add funds or free up margin...')
+        if market_hours == True:   
+            current_price  = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[1]/div/div[2]/div[2]/span/span[1]').text)
+            #print(current_price)
+            high_price = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[1]/div[2]/span').text)
+            previous_closing_price = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[2]/div[2]/span').text)
+            low_price = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[2]/div[1]/span').text)
+            avg_price = float(driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[2]/div/div/div[2]/div[3]/div[2]/span').text)
+            #deciding trend
+            if current_price < avg_price: #negative
+                limit_price = low_price
+            elif current_price > avg_price: #positive
+                limit_price = avg_price
+            #click buy             
+            driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[1]').click()
+            #buy box
+            if exchange == 'BSE':
+                buyBSE = driver.find_element_by_css_selector('#app > form > header > div.exchange-selector > div > div:nth-child(1) > label')
+                buyBSE.click()
             else:
-                if exchange == 'NSE':
-                    driver.find_element_by_xpath('//*[@id="app"]/form/header/div[2]/div/div[2]/label').click()
-                    #print('\nMargin not calculated since MKT was selected: ',driver.find_element_by_xpath('//*[@id="app"]/form/header/div[2]/div/div[2]/label/span').text)
-                else: #BSE
-                    driver.find_element_by_xpath('//*[@id="app"]/form/header/div[2]/div/div[1]/label').click()
-                    #print('\nMargin not calculated since MKT was selected: ',driver.find_element_by_xpath('//*[@id="app"]/form/header/div[2]/div/div[2]/label/span').text).replace('₹','')
-                #set limit price
-                price = driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[2]/div/input')
-                price.clear() #clearing the already set price
-                price.send_keys(str(limit_price))
-                print('Margin Required: ', limit_price*qty)
-                funds_used_for_this_trade = (weightage_of_trade/100)*funds
-                qty = round(funds_used_for_this_trade/current_price)
-                set_qty = driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input')
-                set_qty.send_keys(qty)
-                if qty == 0:
-                    raise Exception('Funds too low, add funds or free up margin...')
+                buyNSE = driver.find_element_by_css_selector('#app > form > header > div.exchange-selector > div > div:nth-child(2) > label')
+                buyNSE.click()
+            #send keys for qty and price
+            try:
+                if funds < 100:
+                    raise Exception('Funds too low, add funds or free up margin...')     
                 else:
+                    #set limit price
+                    price = driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[2]/div/input')
+                    price.clear() #clearing the already set price
+                    price.send_keys(str(limit_price))
+                    print('Margin Required: ', limit_price*qty)
+                    # funds_used_for_this_trade = (weightage_of_trade/100)*funds
+                    # qty = round(funds_used_for_this_trade/current_price)
+                    set_qty = driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input')
+                    set_qty.send_keys(qty)
+                    #set gtt stop loss 
+                    driver.find_element_by_xpath('//*[@id="app"]/form/section/div[3]/div/div[2]/div[1]/label').click()
+                    set_stoploss_box = driver.find_element_by_xpath('//*[@id="app"]/form/section/div[3]/div/div[2]/div[2]/div/input')
+                    set_stoploss_box.clear()
+                    set_qty.send_keys(str(-5))
+                    #set target gtt
+                    driver.find_element_by_xpath('//*[@id="app"]/form/section/div[3]/div/div[3]/div[1]/label/span[2]').click()
+                    set_target_box = driver.find_element_by_xpath('//*[@id="app"]/form/section/div[3]/div/div[3]/div[2]/div/input')
+                    set_target_box.clear()
+                    set_target_box.send_keys(str(10))
                     #final buy click
                     driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[1]').click()
-        except:
-            print('Margin too low, free up or add funds...')
-            #cancel buy box
-            driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[2]').click()
-            #close button on market depth
-            driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()
-            print('Redirecting to funds portal...')
-            #clicking on funds from the top bar
-            driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div[2]/div[1]/a[5]').click()
-            #clicking on funds
-            response = input('\nWould you like to add funds now? y/n: ')
-            if response == 'y' or response == 'Y':
-                driver.find_element_by_xpath('//*[@id="app"]/div[2]/div/div/div[2]/div[1]/button').click() 
-            elif response == 'n' or response == 'N':
-                print('Adding funds cancelled, redirecting to holdings...')
-                driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div[2]/div[1]/a[3]').click()
-            else:
-                print('No response from the user, adding funds cancelled.')
-              
+                    
+                    #close button on market depth
+                    driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()
 
+                    #back to dash
+                    driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div/div[1]/a[2]').click()
+
+            except:
+                print('Margin too low, free up or add funds...')
+                #cancel buy box
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[2]').click()
+                #close button on market depth
+                driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()
+                print('Redirecting to funds portal...')
+                #clicking on funds from the top bar
+                driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div[2]/div[1]/a[5]').click()
+                #clicking on funds
+                response = input('\nWould you like to add funds now? y/n: ')
+                if response == 'y' or response == 'Y':
+                    driver.find_element_by_xpath('//*[@id="app"]/div[2]/div/div/div[2]/div[1]/button').click() 
+                elif response == 'n' or response == 'N':
+                    print('Adding funds cancelled, redirecting to holdings...')
+                    driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div[2]/div[1]/a[3]').click()
+                else:
+                    print('No response from the user, adding funds cancelled.')
+                
+        else: #market hours false
+            #click buy             
+            driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[1]').click()
+            #buy box
+            if exchange == 'BSE':
+                buyBSE = driver.find_element_by_css_selector('#app > form > header > div.exchange-selector > div > div:nth-child(1) > label')
+                buyBSE.click()
+            else:
+                buyNSE = driver.find_element_by_css_selector('#app > form > header > div.exchange-selector > div > div:nth-child(2) > label')
+                buyNSE.click()
+            #send keys for qty and price
+            print(funds)
+            try:
+                if funds > 100:
+                    print('Reached here')
+                    driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[2]/div[2]/div/div[1]/label').click() #click on MKT     
+                    set_qty = driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[1]/div[1]/div/input')
+                    set_qty.send_keys(qty)
+                    #click on AMO
+                    driver.find_element_by_xpath('//*[@id="app"]/form/section/div[1]/div/div[3]/label').click()
+                    #final buy click
+                    driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[1]').click()
+                    #close button on market depth
+                    driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()
+                    #back to dash
+                    driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div/div[1]/a[2]').click()
+                else:
+                    raise Exception('Funds too low, add funds or free up margin...')
+            except:
+                print('Margin too low, free up or add funds...')
+                #cancel buy box
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[2]').click()
+                #close button on market depth
+                driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()       
+                print('Redirecting to funds portal...')
+                #clicking on funds from the top bar
+                driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div[2]/div[1]/a[5]').click()
+                #clicking on funds
+                response = input('\nWould you like to add funds now? y/n: ')
+                if response == 'y' or response == 'Y':
+                    driver.find_element_by_xpath('//*[@id="app"]/div[2]/div/div/div[2]/div[1]/button').click() 
+                elif response == 'n' or response == 'N':
+                    print('Adding funds cancelled, redirecting to holdings...')
+                    driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div[2]/div[1]/a[3]').click()
+                else:
+                    print('No response from the user, adding funds cancelled.')
         
 
         
@@ -392,12 +609,14 @@ class OptionTrading:
         
 
     
-login = Login(str(input("Enter user's name: ")))
-url , session_id, funds = login.process_information()
+#login = Login(str(input("Enter user's name: ")))
+#url , session_id, funds = login.process_information()
 
-trade = Trade('TATAMOTORS')
-trade.BuyStock(session_id = session_id, url = url,qty=0,funds=funds, weightage_of_trade=10)
-
+#trade = Trade('TATAMOTORS',session_id=session_id,url=url)
+#symbol = ['HCLTECH','TATAMOTORS']
+#for i in range(0,2):
+#    Trade(symbol[i],session_id=session_id,url=url).PlaceBuyOrder(qty=1, funds=funds, market_hours=False)
+# trade.BuyStock(session_id = session_id, url = url,qty=100,funds=funds,market_hours=False)
 #handleOrders = HandleOrders(session_id = session_id, url = url)
 #handleOrders.GetOrders()
 
@@ -406,13 +625,15 @@ trade.BuyStock(session_id = session_id, url = url,qty=0,funds=funds, weightage_o
 
 
 
-print('Press ENTER to exit...')
-input()
+# print('Press ENTER to exit...')
+# input()
 
 
 
 
 
 # %%
+
+
 
 # %%

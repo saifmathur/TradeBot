@@ -19,6 +19,10 @@ from sklearn.model_selection import train_test_split
 import math
 from sklearn.metrics import mean_squared_error,accuracy_score
 
+import sys
+#sys.path.append('../DLpart/')
+#from PredictStock import Technicals
+import datetime
 
 class LSTMPrediction:
     
@@ -114,7 +118,6 @@ class LSTMPrediction:
 class LinearRegPrediction:
 
     def get_preds_lin_reg(self, df, target_col='Close'):
-       
         regressor = LinearRegression()
         x = df.drop(target_col, axis=1)
         y = df[target_col]
@@ -138,26 +141,26 @@ class Technicals:
     def __init__(self,symbol):
         self.symbol = symbol
 
-    def EMA(self,timeframe=9,on_field='Close'):
-        yobj = yf.Ticker(self.symbol)
-        df = yobj.history(period="1y")
+    def EMA(self,timeframe=9,on_field='Close',plot=False, period = "1y", interval = "1d"):
+        df = yf.Ticker(self.symbol).history(period=period, interval=interval)
         df = df.drop(['Stock Splits','Dividends'],axis=1)
         df.index =  pd.to_datetime(df.index)
         EMA = df[on_field].ewm(span=timeframe, adjust=False).mean()
         df_new = df[[on_field]]
         df_new.reset_index(level=0, inplace=True)
         df_new.columns=['ds','y']
-        plt.figure(figsize=(16,8))
-        plt.plot(df_new.ds, df_new.y, label='price')
-        plt.plot(df_new.ds, EMA, label='EMA line',color='red')
-        plt.show()
-        print('Latest EMA on '+on_field+': ',EMA[len(EMA)-1],'\n')
-        return EMA
+        if plot == True:
+            plt.figure(figsize=(16,8))
+            plt.plot(df_new.ds, df_new.y, label='price')
+            plt.plot(df_new.ds, EMA, label='EMA line',color='red')
+            plt.show()
+        #print('Latest EMA on '+on_field+': ',EMA[len(EMA)-1],'\n')
+        #return EMA
+        return EMA[len(EMA)-1]
 
 
-    def MACD(self,on_field='Close'):
-        yobj = yf.Ticker(self.symbol)
-        df = yobj.history(period="1y")
+    def MACD(self,on_field='Close',plot=False):
+        df = yf.Ticker(self.symbol).history(period="1y")
         df = df.drop(['Stock Splits','Dividends'],axis=1)
         df.index =  pd.to_datetime(df.index)
         df_new = df[[on_field]]
@@ -168,16 +171,21 @@ class Technicals:
         EMA26 = df_new.y.ewm(span=26, adjust=False).mean()
         MACD = EMA12-EMA26
         EMA9 = MACD.ewm(span=9, adjust=False).mean()
-        plt.figure(figsize=(16,8))
-        #plt.plot(df_new.ds, df_new.y, label='price')
-        plt.plot(df_new.ds, MACD, label=self.symbol+' MACD', color='blue')
-        plt.plot(df_new.ds, EMA9, label=self.symbol+' Signal Line', color='red')
-        plt.legend(loc='upper left')
-        plt.show()
-        print('\n')
-        print(EMA9[len(EMA9)-1], MACD[len(MACD)-1])
-
         
+        #plt.plot(df_new.ds, df_new.y, label='price')
+        if plot == True:
+            plt.figure(figsize=(16,8))
+            plt.plot(df_new.ds, MACD, label=self.symbol+' MACD', color='blue')
+            plt.plot(df_new.ds, EMA9, label=self.symbol+' Signal Line', color='red')
+            plt.legend(loc='upper left')
+            plt.show()
+        #print('\n')
+        #print(EMA9[len(EMA9)-1], MACD[len(MACD)-1])
+        if MACD[len(MACD)-1] > MACD[len(MACD)-2]:
+            return True
+        else:
+            return False
+
         # if MACD[len(MACD)-1]-EMA9[len(EMA9)-1] <= 4 and MACD[len(MACD)-1]-EMA9[len(EMA9)-1] >= 0:  
         #     print('ALERT: MACD crossover about to occur, Sell side')
         # elif MACD[len(MACD)-1]-EMA9[len(EMA9)-1] >= -4 and MACD[len(MACD)-1]-EMA9[len(EMA9)-1] <= 0:
@@ -185,7 +193,7 @@ class Technicals:
         # else:
         #     print('No MACD crossovers')
 
-        return EMA9[len(EMA9)-1], MACD[len(MACD)-1]  #latest value of EMA9 line and MACD value
+        #return EMA9[len(EMA9)-1], MACD[len(MACD)-1]  #latest value of EMA9 line and MACD value
         
 
     def RSI_backUpCode(self, period = 14):
@@ -268,9 +276,8 @@ class Technicals:
         Latest_RSI_value = float(df_new['RSI'][-1])
         return df_new, Latest_RSI_value
 
-    def RSI(self,period = 14):
-        yobj = yf.Ticker(self.symbol)
-        df = yobj.history(period="1mo")
+    def RSI(self,period = 14, plot = False):
+        df = yf.Ticker(self.symbol).history(period="1y")
         df = df.drop(['Stock Splits','Dividends'],axis=1)
         df_index =  pd.to_datetime(df.index)
         
@@ -337,15 +344,21 @@ class Technicals:
             RSI.append(round(rsi,2))
 
         #df_new['RSI'] = RSI
-        
-        
-        plt.figure(figsize=(16,8))
-        plt.plot(df_index[len(df_new)-period:len(df_new)],RSI, label='RSI value')
-        plt.legend(loc='upper left')
-        plt.show()
-        print('\nCurrent RSI value: ' , RSI[len(RSI)-1])
+        if plot == True:
+            plt.figure(figsize=(16,8))
+            plt.plot(df_index[len(df_new)-period:len(df_new)],RSI, label='RSI value')
+            plt.legend(loc='upper left')
+            plt.show()
+            print('\nCurrent RSI value: ' , RSI[len(RSI)-1])
         Latest_RSI_value = RSI[-1]
-        return df_new, RSI
+        Previous_day_rsi_value = RSI[-2]
+        if (Previous_day_rsi_value < Latest_RSI_value) and (Latest_RSI_value >= 40) and (Latest_RSI_value <= 60):
+            return True
+        else:
+            return False
+        #return df_new, RSI
+        #return RSI
+        #return Latest_RSI_value
 
     def BollingerBands(self, degree_of_freedom = 20, period = 20, on_field = 'Close'):    
         yobj = yf.Ticker(self.symbol)
@@ -382,11 +395,102 @@ class Technicals:
 
 
 
-class OptionChainAnalysis:
-    def __init__(self,view_options_contract_for,symbol,expiry_date,strike_price):
-        super().__init__()
-    
 
+
+#general analysis
+class StockListAnalysis:
+    def __init__(self):
+        self.niftyColumns = ['SYMBOL','OPEN','HIGH','LOW','PREVCLOSE','LTP','TODAYS_CHANGE',
+                            'CHANGE_%','VOLUME','VALUE','52WH','52WL','1Y_CHANGE%','1M_CHANGE%']
+        self.niftySectorColumns = ['INDEX','CURRENT','%CHANGE','OPEN','HIGH','LOW','PREVCLOSE','PREVDAY','1W_CLOSE','1M_CLOSE','1Y_CLOSE',
+                                '52WH','52WL','1Y_CHANGE%','1M_CHANGE%']
+        try:
+            self.nifty_100_data = pd.read_csv('../PreFedIndexData/MW-NIFTY-100-'+datetime.datetime.strftime(datetime.datetime.today(),"%d-%b-%Y")+'.csv', names=self.niftyColumns,header=0)
+            self.nifty_sector_data = pd.read_csv('../PreFedIndexData/MW-All-Indices-'+datetime.datetime.strftime(datetime.datetime.today(),"%d-%b-%Y")+'.csv', names=self.niftySectorColumns, header=0)
+        except FileNotFoundError:
+            self.nifty_100_data = pd.read_csv('PreFedIndexData/MW-NIFTY-100-'+'12-Jun-2021'+'.csv', names=self.niftyColumns,header=0)
+            self.nifty_sector_data = pd.read_csv('PreFedIndexData/MW-All-Indices-'+'12-Jun-2021'+'.csv', names=self.niftySectorColumns, header=0)
+
+
+    def AnalyzeNiftySectors(self):
+        print('\nBest Sectors to invest in right now...')
+        #FILTERING NIFTY SECTORS ABOVE       
+        NIFTY_SECTORS = pd.DataFrame(self.nifty_sector_data.iloc[[13,14,15,17,18,19,20,21,22,23,24,44,45],:].values, columns=self.niftySectorColumns)
+        NIFTY_SECTORS = NIFTY_SECTORS.reset_index(drop=True)
+        #NIFTY_SECTORS.columns
+        Highest_1Y_return_sectors = []
+        Highest_1M_return_sectors = []
+        for i in range(len(NIFTY_SECTORS)):
+            if float(NIFTY_SECTORS['1Y_CHANGE%'][i]) > 50:
+                #print(NIFTY_SECTORS['INDEX'][i])
+                Highest_1Y_return_sectors.append([NIFTY_SECTORS['INDEX'][i],NIFTY_SECTORS['1Y_CHANGE%'][i]])
+            if float(NIFTY_SECTORS['1M_CHANGE%'][i]) > 10:
+                #print(NIFTY_SECTORS['INDEX'][i])
+                Highest_1M_return_sectors.append([NIFTY_SECTORS['INDEX'][i],NIFTY_SECTORS['1M_CHANGE%'][i]])
+        return pd.DataFrame(Highest_1Y_return_sectors, columns=['SECTOR','365_DAY_RETURN%']) , pd.DataFrame(Highest_1M_return_sectors, columns=['SECTOR','30_DAY_RETURN%']) 
+
+    def SwingTrade(self): 
+        #FILTERING NIFTY 100
+        nifty_filtered = []
+        for i in range(1,len(self.nifty_100_data)):
+            try:
+                if (float(self.nifty_100_data['1Y_CHANGE%'][i])>50) and (float(self.nifty_100_data['1M_CHANGE%'][i])>5):
+                    #self.nifty_100_data['1Y_CHANGE%'][i]
+                    #print(self.nifty_100_data['SYMBOL'][i])
+                    nifty_filtered.append([self.nifty_100_data['SYMBOL'][i],self.nifty_100_data['1M_CHANGE%'][i]])
+            except:
+                continue
+
+        nifty_filtered = pd.DataFrame(nifty_filtered, columns = ['SYMBOL','1_MONTH_RETURN%'])
+        #SUGGESTIONS
+        suggestions = []
+        print('\n Please wait this might take a few seconds... \n')
+        for i in range(len(nifty_filtered)):
+            LTP = round(float(yf.Ticker(nifty_filtered['SYMBOL'][i]+'.NS').history(period='1d')['Close'][-1]),ndigits=2)
+            suggestions.append([nifty_filtered['SYMBOL'][i],nifty_filtered['1_MONTH_RETURN%'][i],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').RSI()],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=50)<LTP],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').MACD()],LTP,round(Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=20, interval= "60m"),ndigits=-1)])
+            
+        suggestions = pd.DataFrame(suggestions, columns = ['SYMBOL','1_MONTH_RETURN%','GOOD_RSI_VALUE','LTP_ABOVE_50_EMA','GOOD_MACD','LAST_TRADED_PRICE_₹','20_EMA']) #short cut for rupee symbol is ctrl+shift+4 
+        #print('\n', suggestions)
+        print('\nBest stocks to invest in, at the moment for swing trading...')
+        best_for_swing_trade = []
+        for i in range(len(suggestions)):
+            if (suggestions['LTP_ABOVE_50_EMA'][i][0]==True) and (suggestions['GOOD_RSI_VALUE'][i][0]==True) and (suggestions['GOOD_MACD'][i][0]==True):
+                #print(suggestions['SYMBOL'][i])
+                best_for_swing_trade.append([suggestions['SYMBOL'][i],suggestions['1_MONTH_RETURN%'][i], suggestions['LAST_TRADED_PRICE_₹'][i], suggestions['20_EMA'][i]])
+
+        #print('\n\n',pd.DataFrame(best_for_swing_trade, columns=['SYMBOL','1M_MONTH_RETURN%']).sort_values(by='1M_MONTH_RETURN%',ascending=False))
+        return pd.DataFrame(best_for_swing_trade, columns=['SYMBOL','1_MONTH_RETURN%','PRICE','LIMIT_PRICE']).sort_values(by='PRICE',ascending=True).reset_index(drop=True)
+        
+    def LongTerm(self):
+        nifty_filtered = []
+        for i in range(1,len(self.nifty_100_data)):
+            try:
+                if (float(self.nifty_100_data['1Y_CHANGE%'][i])>50):
+                    nifty_filtered.append([self.nifty_100_data['SYMBOL'][i],self.nifty_100_data['1Y_CHANGE%'][i]])
+
+            except:
+                continue
+
+        nifty_filtered = pd.DataFrame(nifty_filtered, columns = ['SYMBOL','1_YEAR_RETURN%'])
+        #print(nifty_filtered)
+        #suggestions
+        suggestions = []
+        print('\n Please wait this might take a few seconds... \n')
+        for i in range(len(nifty_filtered)):
+            LTP = round(float(yf.Ticker(nifty_filtered['SYMBOL'][i]+'.NS').history(period='1d')['Close'][-1]),ndigits=2)
+            suggestions.append([nifty_filtered['SYMBOL'][i],nifty_filtered['1_YEAR_RETURN%'][i],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').RSI()],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=50)<LTP],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=200)<LTP],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').MACD()],LTP,round(Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=20, interval= "60m"),ndigits=-1)])
+
+        suggestions = pd.DataFrame(suggestions, columns = ['SYMBOL','1_YEAR_RETURN%','GOOD_RSI_VALUE','LTP_ABOVE_50_EMA','LTP_ABOVE_200_EMA','GOOD_MACD','LAST_TRADED_PRICE_₹','20_EMA'])
+        #print(suggestions)
+        print('\nBest stocks to invest in, at the moment for Long Term...')
+        best_for_long_term = []
+        for i in range(len(suggestions)):
+            if ((suggestions['LTP_ABOVE_50_EMA'][i][0]==True) or (suggestions['LTP_ABOVE_200_EMA'][i][0]==True)) and (suggestions['GOOD_RSI_VALUE'][i][0]==True) and (suggestions['GOOD_MACD'][i][0]==True):
+                #print(suggestions['SYMBOL'][i])
+                best_for_long_term.append([suggestions['SYMBOL'][i],suggestions['1_YEAR_RETURN%'][i],suggestions['LAST_TRADED_PRICE_₹'][i], suggestions['20_EMA'][i]])
+
+        #print('\n\n',pd.DataFrame(best_for_swing_trade, columns=['SYMBOL','1M_MONTH_RETURN%']).sort_values(by='1M_MONTH_RETURN%',ascending=False))
+        return pd.DataFrame(best_for_long_term, columns=['SYMBOL','1_YEAR_RETURN%','PRICE','LIMIT_PRICE']).sort_values(by='PRICE',ascending=True).reset_index(drop=True)
 
 
 #%%
@@ -395,56 +499,25 @@ class OptionChainAnalysis:
 #df, dictionary = obj.fetchFromYahoo()
 
 
-obj2 = Technicals('TATAMOTORS.NS')
+#obj2 = Technicals('TATAMOTORS.NS')
 #EMA = obj2.EMA(20)
-obj2.MACD()
-df_new, RSI = obj2.RSI()
-d =obj2.BollingerBands()
+#obj2.MACD()
+#df_new, RSI = obj2.RSI()
+#d =obj2.BollingerBands()
+#df = pd.read_csv('../MW-NIFTY-100-02-Jun-2021 (4).csv')
+#sla = StockListAnalysis()
+#sla.SwingTrade()
+#%%
+#s = df.sort_values("PRICE").reset_index(drop=True)
+#df
 #%%
 
+#a,b = sla.AnalyzeNiftySectors()
+#sla.LongTerm()
+#best_suggestions = sla.SwingTrade()
 
-#%%
-
-# train_data, test_data = obj.get_train_test_dataset(df)
-
-# xtrain, ytrain = obj.prepare_data_for_LSTM_kaggle(train_data)
-# xtest, ytest = obj.prepare_data_for_LSTM_kaggle(test_data)
-
-
-# xtrain, xtest = obj.reshape_for_LSTM(xtrain,xtest)
-
-# model = obj.create_LSTM_model(lstm_layers_after_main=2,
-#                                 lstm_units=32,
-#                                 shape=(xtrain.shape[1],1)
-#                                 )
-
-
-# model.fit(xtrain,ytrain,batch_size=16,epochs=10,validation_data=(xtest,ytest))
-
-# predictions = model.predict(xtest)
-# predictions_inverse = Scaler.inverse_transform(predictions)
-# rmse = np.sqrt(np.mean((predictions - ytest) ** 2))
-# rmse
-
-# # Plot the data
-# train_data_len = len(train_data)
-
-# index_for_date = pd.DataFrame(df.index)
-# train = pd.DataFrame(data=Scaler.inverse_transform(train_data),columns={'Close'})
-# train_size = int(len(df['Close'])*0.70)
-
-# valid = pd.DataFrame(data=Scaler.inverse_transform(test_data[60:,:]),columns={'Close'})
-# valid['Predictions'] = predictions_inverse
-
-# # Visualize the data
-# plt.figure(figsize=(16,8))
-# plt.title('Model')
-# plt.xlabel('Date', fontsize=18)
-# plt.ylabel('Close Price', fontsize=18)
-# plt.plot(train['Close'])
-# plt.plot(valid[['Close', 'Predictions']])
-# plt.legend(['Train', 'Val', 'Predictions'], loc='lower right')
-# plt.show()
-
-# print(valid)
-
+# %%
+#yf.Ticker('PEL.NS').history(period='1d')['Close'][-1]
+# %%
+round(989,ndigits=-1)
+# %%
