@@ -201,3 +201,13 @@ def what(string = printHello()):
 # %%
 what()
 # %%
+
+
+a  = 0
+try:
+    print(5/a)
+except:
+    print('not possible')
+
+
+# %%

@@ -154,6 +154,7 @@ def placeOrder(final_order,session_id='',url='',funds=0,market_hours=False, long
     elif longORSwing == 'swing':
         for i in range(0,2):    
             trade = seltest.Trade(final_order['SYMBOL'][i],session_id=session_id,url=url).PlaceBuyOrder(qty=final_order['QTY'][i],limit_price=final_order['LIMIT_PRICE'][i],funds=funds,market_hours=market_hours,swingTrade=True)
+            
     clear()
     print('\nAll orders placed, please check the order tab.')
 
@@ -179,9 +180,5 @@ def main():
  
 if __name__ == '__main__':
     main()
-    
-        
-# %%
-
 
 # %%
