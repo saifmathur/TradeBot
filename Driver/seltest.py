@@ -1,5 +1,6 @@
 #%%
 import pandas as pd
+import sys
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from bs4 import BeautifulSoup
@@ -82,7 +83,7 @@ class Login:
         print(self.checkPL(PL.text))
         #click on holdings
         driver.find_element_by_xpath('//*[@id="app"]/div[1]/div/div[2]/div[1]/a[3]/span').click()
-        total_investment_value = float(str(driver.find_element_by_xpath('//*[@id="app"]/div[2]/div[2]/div/div/div/div[1]/div[4]/h1/span[1]').text).replace(',',''))
+        total_investment_value = float(str(driver.find_element_by_xpath('//*[@id="app"]/div[2]/div[2]/div/div/div/div[1]/div[1]/h1').text).replace(',',''))
         current_investment_value = float(str(driver.find_element_by_xpath('//*[@id="app"]/div[2]/div[2]/div/div/div/div[1]/div[2]/h1').text).replace(',',''))
         print('Total Investment: ',total_investment_value)
         print('Current value of Investment: ', current_investment_value)
@@ -222,7 +223,7 @@ class Trade:
                 print('\nOrder will be placed on the next trading day, you can modify the order from the "Order" tab.')
 
                 #final click 
-                driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[1]').click()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div[2]/button[1]').click()
 
                 #closing the market depth
                 driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()
@@ -309,7 +310,7 @@ class Trade:
                 driver.find_element_by_xpath('//*[@id="app"]/form/section/div[2]/div[2]/div[2]/div[2]/div/div[1]/label').click()
                 print('\nOrder will be placed on the next trading day, you can modify the order from the "Order" tab.')
                 #final click 
-                driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div/div[2]/button[1]').click()
+                driver.find_element_by_xpath('//*[@id="app"]/form/section/footer/div[2]/button[1]').click()
                 #closing the market depth
                 driver.find_element_by_xpath('//*[@id="app"]/div[5]/div/div/div[3]/div/div/div[2]/button[3]').click()
         else:
@@ -431,8 +432,13 @@ class HandleOrders:
                 row.pop(6)
                 open_orders.append(row)
 
-        PENDING_ORDERS_DATAFRAME = pd.DataFrame(open_orders,columns=['Time','Type','Instrument','Exchange','Product','Qty','Avg.Price','Status'])
-        print(PENDING_ORDERS_DATAFRAME.head())
+        try:
+            PENDING_ORDERS_DATAFRAME = pd.DataFrame(open_orders,columns=['Time','Type','Instrument','Exchange','Product','Qty','Avg.Price','Status'])
+            print(PENDING_ORDERS_DATAFRAME.head())
+        except ValueError:
+            print('Please check orders tab.')
+            sys.exit(0)
+        
         
                
             

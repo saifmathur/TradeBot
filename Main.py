@@ -8,9 +8,9 @@ import threading
 from time import sleep
 from Driver import seltest
 import getpass
-from DLpart.PredictStock import StockListAnalysis,Technicals 
+from DLpart.PredictStock import StockListAnalysis,Technicals
 from datetime import time
-
+import yfinance as yf
 
 
 def GiveSwingSuggestions():
@@ -72,7 +72,7 @@ def GreetingsAndDisclosure():
 def SwingOrLong():
     UpdateDisclaimer()
     sleep(3)
-    clear()
+    #clear()
     Flag = str(input('\nDo you wish to invest for long term or do a swing trade? [long/swing]: '))  
     if (Flag == 'long' or Flag == 'LONG' or Flag == 'Long'):
         #get long term suggestions
@@ -90,7 +90,7 @@ def Invest():
     if funds > 100:
         if decision == 'long':
             print('Investing the available balance of ' + '₹'+str(funds))
-            clear()
+            #clear()
             UpdateDisclaimer()
             final_order = decideQty(df,funds = funds)
             print('\nThis is the order the system is going to place:\n',final_order)
@@ -102,7 +102,7 @@ def Invest():
                 placeOrder(final_order=final_order,session_id=session_id,url=url,funds=funds,market_hours=False, longORSwing=decision)
         elif decision == 'swing':
             print('Investing the available balance of ' + '₹'+str(funds))
-            clear()
+            #clear()
             UpdateDisclaimer()
             final_order = decideQty(df,funds = funds)
             print('\nThis is the order the system is going to place:\n',final_order)
@@ -122,12 +122,20 @@ def Invest():
 
 def decideQty(suggestions, weightage = 0.5, funds=0):
     suggestions = suggestions.sort_values('PRICE', ascending = True)
+    
     print('\n*** \nCurrent weightage for each stock is 50% of your funds. \nWe do not advise you to change this weightage.\n***')
     qtys = []
-    for i in range(0,2):
-        qty = int(round((funds*weightage)/suggestions['PRICE'][i]))
-        qtys.append([suggestions['SYMBOL'][i],suggestions['PRICE'][i],str(qty),suggestions['LIMIT_PRICE'][i]])
-
+    try:
+        for i in range(0,2):
+            qty = int(round((funds*weightage)/suggestions['PRICE'][i]))
+            qtys.append([suggestions['SYMBOL'][i],suggestions['PRICE'][i],str(qty),suggestions['LIMIT_PRICE'][i]])
+    
+    except ValueError:
+        print('There is only one good suggestions at the moment, proceeding to place the order...')
+        exit(0)
+    except KeyError:
+        print('There are no good suggestions at the moment, please try again after the next trading session.')
+        exit(0)
     return pd.DataFrame(qtys, columns=['SYMBOL','PRICE','QTY','LIMIT_PRICE']) 
 
 def MarketHours(): #returns true if order placed during market hours
@@ -149,14 +157,41 @@ def RiskToRewardDisclaimer():
         
 def placeOrder(final_order,session_id='',url='',funds=0,market_hours=False, longORSwing = ''):
     if longORSwing == 'long':
-        for i in range(0,2):    
-            trade = seltest.Trade(final_order['SYMBOL'][i],session_id=session_id,url=url).PlaceBuyOrder(qty=final_order['QTY'][i],limit_price=final_order['LIMIT_PRICE'][i],funds=funds,market_hours=market_hours,longTerm=True)
+        try:
+            for i in range(0,2):    
+                trade = seltest.Trade(final_order['SYMBOL'][i],session_id=session_id,url=url).PlaceBuyOrder(qty=final_order['QTY'][i],limit_price=final_order['LIMIT_PRICE'][i],funds=funds,market_hours=market_hours,longTerm=True)
+        except ValueError:
+            print('There is only one good suggestions at the moment, proceeding to place the order...')
+            exit(0)
+        except KeyError:
+            print('There are no good suggestions at the moment, please try again after the next trading session.')
+            exit(0)
     elif longORSwing == 'swing':
-        for i in range(0,2):    
-            trade = seltest.Trade(final_order['SYMBOL'][i],session_id=session_id,url=url).PlaceBuyOrder(qty=final_order['QTY'][i],limit_price=final_order['LIMIT_PRICE'][i],funds=funds,market_hours=market_hours,swingTrade=True)
+        try:
+            for i in range(0,2):
+                try:    
+                    trade = seltest.Trade(final_order['SYMBOL'][i],session_id=session_id,url=url).PlaceBuyOrder(qty=final_order['QTY'][i],limit_price=final_order['LIMIT_PRICE'][i],funds=funds,market_hours=market_hours,swingTrade=True)
+                except IndexError:
+                    tech = Technicals('^NSEI')
+                    EMA_50 = tech.EMA(timeframe=50,plot=True,interval='1h')
+                    if yf.Ticker('^NSEI').history(period='1d')['Close'][-1] < EMA_50:
+                        print('No suggestions, market is bearish for now')
+                break
+
+                    
+        except ValueError:
+            print('There is only one good suggestions at the moment, proceeding to place the order...')
+            exit(0)
+        except KeyError:
+            print('There are no good suggestions at the moment, please try again after the next trading session.')
+            exit(0)        
+        
+    
             
-    clear()
-    print('\nAll orders placed, please check the order tab.')
+    #clear()
+   
+    #print('Pending Orders: \n')
+    #print(seltest.HandleOrders(session_id = session_id, url=url).GetOrders())
 
 
 
@@ -180,5 +215,10 @@ def main():
  
 if __name__ == '__main__':
     main()
+
+
+
+
+
 
 # %%

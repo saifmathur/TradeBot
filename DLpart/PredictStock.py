@@ -408,8 +408,8 @@ class StockListAnalysis:
             self.nifty_100_data = pd.read_csv('../PreFedIndexData/MW-NIFTY-100-'+datetime.datetime.strftime(datetime.datetime.today(),"%d-%b-%Y")+'.csv', names=self.niftyColumns,header=0)
             self.nifty_sector_data = pd.read_csv('../PreFedIndexData/MW-All-Indices-'+datetime.datetime.strftime(datetime.datetime.today(),"%d-%b-%Y")+'.csv', names=self.niftySectorColumns, header=0)
         except FileNotFoundError:
-            self.nifty_100_data = pd.read_csv('PreFedIndexData/MW-NIFTY-100-'+'12-Jun-2021'+'.csv', names=self.niftyColumns,header=0)
-            self.nifty_sector_data = pd.read_csv('PreFedIndexData/MW-All-Indices-'+'12-Jun-2021'+'.csv', names=self.niftySectorColumns, header=0)
+            self.nifty_100_data = pd.read_csv('PreFedIndexData/MW-NIFTY-100-'+'15-Oct-2021'+'.csv', names=self.niftyColumns,header=0)
+            self.nifty_sector_data = pd.read_csv('PreFedIndexData/MW-All-Indices-'+'15-Oct-2021'+'.csv', names=self.niftySectorColumns, header=0)
 
 
     def AnalyzeNiftySectors(self):
@@ -446,9 +446,11 @@ class StockListAnalysis:
         suggestions = []
         print('\n Please wait this might take a few seconds... \n')
         for i in range(len(nifty_filtered)):
-            LTP = round(float(yf.Ticker(nifty_filtered['SYMBOL'][i]+'.NS').history(period='1d')['Close'][-1]),ndigits=2)
-            suggestions.append([nifty_filtered['SYMBOL'][i],nifty_filtered['1_MONTH_RETURN%'][i],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').RSI()],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=50)<LTP],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').MACD()],LTP,round(Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=20, interval= "60m"),ndigits=-1)])
-            
+            try:
+                LTP = round(float(yf.Ticker(nifty_filtered['SYMBOL'][i]+'.NS').history(period='1d')['Close'][-1]),ndigits=2)
+                suggestions.append([nifty_filtered['SYMBOL'][i],nifty_filtered['1_MONTH_RETURN%'][i],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').RSI()],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=50)<LTP],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').MACD()],LTP,round(Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=20, interval= "60m"),ndigits=-1)])
+            except:
+                continue
         suggestions = pd.DataFrame(suggestions, columns = ['SYMBOL','1_MONTH_RETURN%','GOOD_RSI_VALUE','LTP_ABOVE_50_EMA','GOOD_MACD','LAST_TRADED_PRICE_₹','20_EMA']) #short cut for rupee symbol is ctrl+shift+4 
         #print('\n', suggestions)
         print('\nBest stocks to invest in, at the moment for swing trading...')
@@ -467,7 +469,6 @@ class StockListAnalysis:
             try:
                 if (float(self.nifty_100_data['1Y_CHANGE%'][i])>50):
                     nifty_filtered.append([self.nifty_100_data['SYMBOL'][i],self.nifty_100_data['1Y_CHANGE%'][i]])
-
             except:
                 continue
 
@@ -477,8 +478,12 @@ class StockListAnalysis:
         suggestions = []
         print('\n Please wait this might take a few seconds... \n')
         for i in range(len(nifty_filtered)):
-            LTP = round(float(yf.Ticker(nifty_filtered['SYMBOL'][i]+'.NS').history(period='1d')['Close'][-1]),ndigits=2)
-            suggestions.append([nifty_filtered['SYMBOL'][i],nifty_filtered['1_YEAR_RETURN%'][i],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').RSI()],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=50)<LTP],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=200)<LTP],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').MACD()],LTP,round(Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=20, interval= "60m"),ndigits=-1)])
+            try:
+                LTP = round(float(yf.Ticker(nifty_filtered['SYMBOL'][i]+'.NS').history(period='1d')['Close'][-1]),ndigits=2)
+                suggestions.append([nifty_filtered['SYMBOL'][i],nifty_filtered['1_YEAR_RETURN%'][i],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').RSI()],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=50)<LTP],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=200)<LTP],[Technicals(nifty_filtered['SYMBOL'][i] + '.NS').MACD()],LTP,round(Technicals(nifty_filtered['SYMBOL'][i] + '.NS').EMA(timeframe=20, interval= "60m"),ndigits=-1)])
+            except IndexError:
+                print('Data unavailable for ' + nifty_filtered['SYMBOL'][i])
+                continue
 
         suggestions = pd.DataFrame(suggestions, columns = ['SYMBOL','1_YEAR_RETURN%','GOOD_RSI_VALUE','LTP_ABOVE_50_EMA','LTP_ABOVE_200_EMA','GOOD_MACD','LAST_TRADED_PRICE_₹','20_EMA'])
         #print(suggestions)
@@ -519,5 +524,30 @@ class StockListAnalysis:
 # %%
 #yf.Ticker('PEL.NS').history(period='1d')['Close'][-1]
 # %%
-round(989,ndigits=-1)
+
+# %%
+import yfinance as yf
+tech = Technicals('WIPRO.NS')
+EMA_50 = tech.EMA(timeframe=50,plot=True,interval='1h')
+print('Moving average of WIPRO.NS: ' + str(EMA_50))
+
+
+
+
+# %%
+import yfinance as yf
+tech = Technicals('WIPRO.NS')
+RSI = tech.MACD(plot=True)
+
+
+# if RSI > 70:
+#     print('RSI of WIPRO.NS is in the overbought zone')
+# elif RSI < 30:
+#     print('RSI of WIPRO.NS is in the oversold zone')
+# else:
+#     print('RSI of WIPRO.NS is neither in oversold nor in overbought zone')
+
+
+
+
 # %%
